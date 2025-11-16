@@ -9,8 +9,11 @@ pmx.init({
     v8: true,
     http: true
   },
+  tracing: {
+    enabled: true
+  },
   profiling: false
-} as any)
+})
 
 const express = require('express')
 const app = express()
@@ -23,12 +26,7 @@ app.get('/', function (req, res) {
 
 server = app.listen(3001, function () {
   timer = setInterval(function () {
-    const req = httpModule.get('http://localhost:' + server.address().port)
-    req.on('response', (res) => {
-      res.on('data', () => {})
-      res.on('end', () => {})
-    })
-    req.on('error', () => {})
+    httpModule.get('http://localhost:' + server.address().port)
   }, 100)
 })
 

@@ -6,7 +6,6 @@ import { resolve } from 'path'
 
 import { exec, fork } from 'child_process'
 import * as pmx from '../src'
-import { MetricType } from '../src/services/metrics'
 
 const launch = (fixture) => {
   return fork(resolve(__dirname, fixture), [], {
@@ -164,16 +163,14 @@ describe('API', function () {
       expect(fn).to.equal(undefined)
     })
 
-    it.skip('should catch uncaught exception and launch callback', (done) => {
+    it('should catch uncaught exception and launch callback', (done) => {
       const child = launch('fixtures/apiOnExitExceptionChild')
-      var callbackReceived = false
 
       child.on('message', res => {
         if (res.type === 'process:exception') {
           assert(!!res.data.message.match(/Cannot read property/))
         }
-        if (res === 'callback' && !callbackReceived) {
-          callbackReceived = true
+        if (res === 'callback') {
           done()
         }
       })
@@ -187,22 +184,22 @@ describe('API', function () {
       const metrics = pmx.metrics([
         {
           name: 'metricHistogram',
-          type: MetricType.histogram,
+          type: 'histogram',
           id: 'metric/custom'
         },
         {
           name: 'metric with spaces',
-          type: MetricType.histogram,
+          type: 'histogram',
           id: 'metric/custom'
         },
         {
           name: 'metric wi!th special chars % ///',
-          type: MetricType.histogram,
+          type: 'histogram',
           id: 'metric/custom'
         },
         {
           name: 'metricFailure',
-          type: 'notExist' as any
+          type: 'notExist'
         }
       ])
       expect(metrics[0].constructor.name === 'Histogram').to.equal(true)
@@ -278,7 +275,7 @@ describe('API', function () {
       })
     })
 
-    it.skip('should enable tracing + metrics', (done) => {
+    it('should enable tracing + metrics', (done) => {
       const child = launch('fixtures/apiBackwardConfChild')
       let tracingDone = false
       let metricsDone = false
