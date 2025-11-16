@@ -8,23 +8,34 @@
     "declaration": true,
     "importHelpers": false,
     "inlineSourceMap": true,
-    "strictNullChecks": true,
+    "removeComments": true,
+    "lib": ["es6"],
+    "types": ["node", "mocha"],
+    "baseUrl": ".",
+
+    /* Strict Type-Checking Options */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "allowUnusedLabels": false,
+    "allowUnreachableCode": false,
+
+    /* Module Resolution & Import Strictness */
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+
+    /* Advanced Options */
     "traceResolution": false,
     "downlevelIteration": true,
-    "resolveJsonModule": true,
-    "removeComments": true,
-    "lib" : [
-      "es6"
-    ],
-    "types": [
-      "node",
-      "mocha"
-    ],
-    "baseUrl": "." // required for "paths"
+    "skipLibCheck": true
   },
-  "include": [
-    "src/**/*.ts"
-  ],
+  "include": ["src/**/*.ts"],
   "exclude": [
     "node_modules/**",
     "test/**/*.ts",

@@ -2,12 +2,13 @@
 
 import * as shimmer from 'shimmer'
 import Debug from 'debug'
+import type { Debugger } from 'debug'
 import Configuration from '../configuration'
 import { MetricInterface } from '../features/metrics'
 import { ServiceManager } from '../serviceManager'
-import Meter from '../utils/metrics/meter'
+// import Meter from '../utils/metrics/meter'
 import Histogram from '../utils/metrics/histogram'
-import * as requireMiddle from 'require-in-the-middle'
+import requireMiddle from 'require-in-the-middle'
 
 import {
   MetricService,
@@ -17,7 +18,7 @@ import {
 } from '../services/metrics'
 
 export class HttpMetricsConfig {
-  http: boolean
+  http!: boolean
 }
 
 export default class HttpMetrics implements MetricInterface {
@@ -25,11 +26,11 @@ export default class HttpMetrics implements MetricInterface {
   private defaultConf: HttpMetricsConfig = {
     http: true
   }
-  private metrics: Map<string, any> = new Map<string, any>()
-  private logger: any = Debug('axm:features:metrics:http')
+  private metrics: Map<string, unknown> = new Map<string, unknown>()
+  private logger: Debugger = Debug('axm:features:metrics:http')
   private metricService: MetricService | undefined
-  private modules: any = {}
-  private hooks
+  private modules: Record<string, unknown> = {}
+  private hooks: { unhook: () => void } | undefined
 
   init (config?: HttpMetricsConfig | boolean) {
     if (config === false) return
@@ -52,7 +53,7 @@ export default class HttpMetrics implements MetricInterface {
 
   private registerHttpMetric () {
     if (this.metricService === undefined) return this.logger(`Failed to load metric service`)
-    const histogram = new Histogram()
+    const histogram = new Histogram({ measurement: 'mean' })
     const p50: InternalMetric = {
       name: `HTTP Mean Latency`,
       id: 'internal/http/builtin/latency/p50',
@@ -91,7 +92,7 @@ export default class HttpMetrics implements MetricInterface {
 
   private registerHttpsMetric () {
     if (this.metricService === undefined) return this.logger(`Failed to load metric service`)
-    const histogram = new Histogram()
+    const histogram = new Histogram({ measurement: 'mean' })
     const p50: InternalMetric = {
       name: `HTTPS Mean Latency`,
       id: 'internal/https/builtin/latency/p50',
@@ -129,14 +130,14 @@ export default class HttpMetrics implements MetricInterface {
   }
 
   destroy () {
-    if (this.modules.http !== undefined) {
+    if (this.modules.http !== undefined && this.modules.http !== null) {
       this.logger('unwraping http module')
-      shimmer.unwrap(this.modules.http, 'emit')
+      shimmer.unwrap(this.modules.http as Record<string, unknown>, 'emit')
       this.modules.http = undefined
     }
-    if (this.modules.https !== undefined) {
+    if (this.modules.https !== undefined && this.modules.https !== null) {
       this.logger('unwraping https module')
-      shimmer.unwrap(this.modules.https, 'emit')
+      shimmer.unwrap(this.modules.https as Record<string, unknown>, 'emit')
       this.modules.https = undefined
     }
     if (this.hooks) {
@@ -148,11 +149,14 @@ export default class HttpMetrics implements MetricInterface {
   /**
    * Hook the http emit event emitter to be able to track response latency / request count
    */
-  private hookHttp (nodule: any, name: string) {
-    if (nodule.Server === undefined || nodule.Server.prototype === undefined) return
+  private hookHttp (nodule: unknown, name: string) {
+    if (!nodule || typeof nodule !== 'object') return
+    type HttpModule = { Server?: { prototype?: unknown } }
+    const httpModule = nodule as HttpModule
+    if (httpModule.Server === undefined || httpModule.Server.prototype === undefined) return
     if (this.modules[name] !== undefined) return this.logger(`Module ${name} already hooked`)
     this.logger(`Hooking to ${name} module`)
-    this.modules[name] = nodule.Server.prototype
+    this.modules[name] = httpModule.Server.prototype
     // register the metrics
     if (name === 'http') {
       this.registerHttpMetric()
@@ -160,31 +164,38 @@ export default class HttpMetrics implements MetricInterface {
       this.registerHttpsMetric()
     }
     const self = this
+    const serverPrototype = httpModule.Server.prototype
+    if (serverPrototype === null || serverPrototype === undefined) return
     // wrap the emitter
-    shimmer.wrap(nodule.Server.prototype, 'emit', (original: Function) => {
-      return function (event: string, req: any, res: any) {
+    shimmer.wrap(serverPrototype as Record<string, unknown>, 'emit', ((original: Function) => {
+      return function (this: unknown, event: string, _req: unknown, res: unknown) {
         // only handle http request
         if (event !== 'request') return original.apply(this, arguments)
 
-        const meter: Meter | undefined = self.metrics.get(`${name}.meter`)
-        if (meter !== undefined) {
+        const meter = self.metrics.get(`${name}.meter`) as { mark: () => void } | undefined
+        if (meter !== undefined && typeof meter.mark === 'function') {
           meter.mark()
         }
-        const latency: Histogram | undefined = self.metrics.get(`${name}.latency`)
-        if (latency === undefined) return original.apply(this, arguments)
+        const latency = self.metrics.get(`${name}.latency`) as { update: (value: number) => void } | undefined
+        if (latency === undefined || typeof latency.update !== 'function') return original.apply(this, arguments)
         if (res === undefined || res === null) return original.apply(this, arguments)
         const startTime = Date.now()
         // wait for the response to set the metrics
-        res.once('finish', _ => {
-          latency.update(Date.now() - startTime)
-        })
+        type ResponseLike = { once: (event: string, handler: () => void) => void }
+        if (res && typeof (res as ResponseLike).once === 'function') {
+          (res as ResponseLike).once('finish', () => {
+            if (latency && typeof latency.update === 'function') {
+              latency.update(Date.now() - startTime)
+            }
+          })
+        }
         return original.apply(this, arguments)
       }
-    })
+    }) as (original: unknown) => unknown)
   }
 
   private hookRequire () {
-    this.hooks = requireMiddle(['http', 'https'], (exports, name) => {
+    this.hooks = requireMiddle(['http', 'https'], (exports: unknown, name: string) => {
       this.hookHttp(exports, name)
       return exports
     })

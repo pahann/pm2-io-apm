@@ -2,24 +2,38 @@
 
 import { MetricService, MetricType, MetricMeasurements } from '../services/metrics'
 import { ServiceManager } from '../serviceManager'
-import * as Debug from 'debug'
+import Debug from 'debug'
+import type { Debugger } from 'debug'
 import { MetricInterface } from '../features/metrics'
 import Histogram from '../utils/metrics/histogram'
 import { RuntimeStatsService } from '../services/runtimeStats'
 
+type RuntimeStatsData = {
+  gc?: {
+    newPause: number
+    oldPause: number
+  }
+  usage?: {
+    ru_nvcsw: number
+    ru_nivcsw: number
+    ru_minflt: number
+    ru_majflt: number
+  }
+}
+
 export class RuntimeMetricsOptions {
-  gcOldPause: boolean
-  gcNewPause: boolean
+  gcOldPause!: boolean
+  gcNewPause!: boolean
   /**
    * Toggle metrics about the page reclaims (soft and hard)
    * see https://en.wikipedia.org/wiki/Page_fault
    */
-  pageFaults: boolean
+  pageFaults!: boolean
   /**
    * Toggle metrics about CPU context switch
    * see https://en.wikipedia.org/wiki/Context_switch
    */
-  contextSwitchs: boolean
+  contextSwitchs!: boolean
 }
 
 const defaultOptions: RuntimeMetricsOptions = {
@@ -32,9 +46,9 @@ const defaultOptions: RuntimeMetricsOptions = {
 export default class RuntimeMetrics implements MetricInterface {
 
   private metricService: MetricService | undefined
-  private logger: any = Debug('axm:features:metrics:runtime')
+  private logger: Debugger = Debug('axm:features:metrics:runtime')
   private runtimeStatsService: RuntimeStatsService | undefined
-  private handle: (data: Object) => void | undefined
+  private handle!: (data: Object) => void
   private metrics: Map<String, Histogram> = new Map<String, Histogram>()
 
   init (config?: RuntimeMetricsOptions | boolean) {
@@ -64,7 +78,7 @@ export default class RuntimeMetrics implements MetricInterface {
         implementation: newHistogram,
         unit: 'ms',
         handler: function () {
-          const percentiles = this.implementation.percentiles([ 0.5 ])
+          const percentiles = (this.implementation as Histogram).percentiles([ 0.5 ])
           return percentiles[0.5]
         }
       })
@@ -76,7 +90,7 @@ export default class RuntimeMetrics implements MetricInterface {
         implementation: newHistogram,
         unit: 'ms',
         handler: function () {
-          const percentiles = this.implementation.percentiles([ 0.95 ])
+          const percentiles = (this.implementation as Histogram).percentiles([ 0.95 ])
           return percentiles[0.95]
         }
       })
@@ -92,7 +106,7 @@ export default class RuntimeMetrics implements MetricInterface {
         implementation: oldHistogram,
         unit: 'ms',
         handler: function () {
-          const percentiles = this.implementation.percentiles([ 0.5 ])
+          const percentiles = (this.implementation as Histogram).percentiles([ 0.5 ])
           return percentiles[0.5]
         }
       })
@@ -104,7 +118,7 @@ export default class RuntimeMetrics implements MetricInterface {
         implementation: oldHistogram,
         unit: 'ms',
         handler: function () {
-          const percentiles = this.implementation.percentiles([ 0.95 ])
+          const percentiles = (this.implementation as Histogram).percentiles([ 0.95 ])
           return percentiles[0.95]
         }
       })
@@ -140,7 +154,7 @@ export default class RuntimeMetrics implements MetricInterface {
       this.metrics.set('hardPageFault', hardPageFault)
     }
 
-    this.handle = (stats: any) => {
+    this.handle = (stats: RuntimeStatsData) => {
       if (typeof stats !== 'object' || typeof stats.gc !== 'object') return
       newHistogram.update(stats.gc.newPause)
       oldHistogram.update(stats.gc.oldPause)

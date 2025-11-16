@@ -1,10 +1,11 @@
 import * as inspector from 'inspector'
 import Debug from 'debug'
+import type { Debugger } from 'debug'
 
 export class InspectorService {
 
   private session: inspector.Session | null = null
-  private logger: Function = Debug('axm:services:inspector')
+  private logger: Debugger = Debug('axm:services:inspector')
 
   init (): inspector.Session {
     this.logger(`Creating new inspector session`)

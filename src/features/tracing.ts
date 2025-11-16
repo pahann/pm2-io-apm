@@ -1,5 +1,6 @@
 import { Feature } from '../featureManager'
-import * as Debug from 'debug'
+import Debug from 'debug'
+import type { Debugger } from 'debug'
 import Configuration from '../configuration'
 import { IOConfig } from '../pmx'
 
@@ -106,8 +107,8 @@ const enabledTracingConfig: TracingConfig = {
 }
 
 export class TracingFeature implements Feature {
-  private options: TracingConfig
-  private logger: Function = Debug('axm:tracing')
+  private options!: TracingConfig
+  private logger: Debugger = Debug('axm:tracing')
   private otel: NodeSDK | undefined;
 
   init (config: IOConfig): void {
@@ -171,13 +172,13 @@ export class TracingFeature implements Feature {
               if (!this.options.ignoreIncomingPaths) {
                 return false
               }
-              return this.options.ignoreIncomingPaths.some((matcher) => applyMatcher(matcher, request))
+              return this.options.ignoreIncomingPaths.some((matcher) => applyMatcher<IncomingMessage>(matcher as IgnoreMatcher<IncomingMessage>, request))
             },
-            ignoreOutgoingRequestHook: (request: IncomingMessage) => {
+            ignoreOutgoingRequestHook: (request: unknown) => {
               if (!this.options.ignoreOutgoingUrls) {
                 return false
               }
-              return this.options.ignoreOutgoingUrls.some((matcher) => applyMatcher(matcher, request))
+              return this.options.ignoreOutgoingUrls.some((matcher) => applyMatcher<{ url?: string }>(matcher as IgnoreMatcher<{ url?: string }>, request as { url?: string }))
             },
 					},
 				}),
@@ -210,8 +211,8 @@ export class TracingFeature implements Feature {
   }
 }
 
-function applyMatcher(matcher: IgnoreMatcher<unknown>, request: IncomingMessage) {
-  this.logger('applyMatcher', {matcher, request: request.url})
+function applyMatcher<T extends { url?: string }>(this: unknown, matcher: IgnoreMatcher<T>, request: T) {
+  // this.logger('applyMatcher', {matcher, request: request.url})
 
   if (!matcher) {
     return false

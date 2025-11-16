@@ -6,13 +6,26 @@ import Autocast from './utils/autocast'
 import * as path from 'path'
 import * as fs from 'fs'
 
+export type ConfigObject = {
+  module_conf?: Record<string, unknown>
+  apm?: {
+    type: string
+    version: string | null
+  }
+  isModule?: boolean
+  module_version?: string
+  module_name?: string
+  description?: string
+  [key: string]: unknown
+}
+
 export default class Configuration {
 
-  static configureModule (opts) {
+  static configureModule (opts: Record<string, unknown>) {
     if (ServiceManager.get('transport')) ServiceManager.get('transport').setOptions(opts)
   }
 
-  static findPackageJson () {
+  static findPackageJson (): string | null {
     try {
       require.main = Configuration.getMain()
     } catch (_e) {
@@ -20,11 +33,11 @@ export default class Configuration {
     }
 
     if (!require.main) {
-      return
+      return null
     }
 
     if (!require.main.paths) {
-      return
+      return null
     }
 
     let pkgPath = path.resolve(path.dirname(require.main.filename), 'package.json')
@@ -50,7 +63,7 @@ export default class Configuration {
     return pkgPath
   }
 
-  static init (conf, doNotTellPm2?) {
+  static init (conf: ConfigObject, doNotTellPm2?: boolean): ConfigObject {
     const packageFilepath = Configuration.findPackageJson()
     let packageJson
 
@@ -67,7 +80,9 @@ export default class Configuration {
       const pkg = require(prefix + 'package.json')
       conf.apm.version = pkg.version || null
     } catch (err) {
-      debug('Failed to fetch current apm version: ', err.message)
+      if (err instanceof Error) {
+        debug('Failed to fetch current apm version: ', err.message)
+      }
     }
 
     if (conf.isModule === true) {
@@ -86,7 +101,7 @@ export default class Configuration {
           conf.module_conf = packageJson.config
         }
       } catch (e) {
-        throw new Error(e)
+        throw new Error(e instanceof Error ? e.message : String(e))
       }
     } else {
       conf.module_name = process.env.name || 'outside-pm2'
@@ -100,7 +115,9 @@ export default class Configuration {
           conf.module_conf = packageJson.config
         }
       } catch (e) {
-        debug(e.message)
+        if (e instanceof Error) {
+          debug(e.message)
+        }
       }
     }
 
@@ -108,22 +125,27 @@ export default class Configuration {
      * If custom variables has been set, merge with returned configuration
      */
     try {
-      if (process.env[conf.module_name]) {
-        const castedConf = new Autocast().autocast(JSON.parse(process.env[conf.module_name] || ''))
+      const moduleName = conf.module_name
+      if (moduleName && process.env[moduleName]) {
+        const castedConf = new Autocast().autocast(JSON.parse(process.env[moduleName] || '')) as Record<string, unknown>
         conf = Object.assign(conf, castedConf)
         // Do not display probe configuration in Keymetrics
-        delete castedConf.probes
+        if (castedConf && typeof castedConf === 'object') {
+          delete castedConf.probes
+        }
         // This is the configuration variable modifiable from keymetrics
-        conf.module_conf = JSON.parse(JSON.stringify(Object.assign(conf.module_conf, castedConf)))
+        conf.module_conf = JSON.parse(JSON.stringify(Object.assign(conf.module_conf || {}, castedConf)))
 
         // Obfuscate passwords
-        Object.keys(conf.module_conf).forEach(function (key) {
-          if ((key === 'password' || key === 'passwd') &&
-            conf.module_conf[key].length >= 1) {
-            conf.module_conf[key] = 'Password hidden'
-          }
-
-        })
+        if (conf.module_conf) {
+          Object.keys(conf.module_conf).forEach(function (key) {
+            if ((key === 'password' || key === 'passwd') &&
+              conf.module_conf && typeof conf.module_conf[key] === 'string' &&
+              (conf.module_conf[key] as string).length >= 1) {
+              conf.module_conf[key] = 'Password hidden'
+            }
+          })
+        }
       }
     } catch (e) {
       debug(e)
@@ -135,7 +157,7 @@ export default class Configuration {
     return conf
   }
 
-  static getMain (): any {
-    return require.main || { filename: './somefile.js' }
+  static getMain (): NodeJS.Module {
+    return require.main || ({ filename: './somefile.js', paths: [] } as unknown as NodeJS.Module)
   }
 }

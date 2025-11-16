@@ -1,18 +1,32 @@
 import * as cluster from 'cluster'
-import * as Debug from 'debug'
+import Debug from 'debug'
+import type { Debugger } from 'debug'
 import { EventEmitter2 } from 'eventemitter2'
 import type { Action } from '../services/actions'
 import type { InternalMetric } from '../services/metrics'
 import type { Transport, TransportConfig } from '../services/transport'
 
+type MessageHandler = (data?: Object) => void
+
+type NodeProcessWithInternals = NodeJS.Process & {
+  _getActiveHandles?: () => Array<{ constructor: { name: string } }>
+}
+
+type ClusterWithWorker = typeof cluster & {
+  isWorker?: boolean
+  worker?: {
+    process: NodeJS.Process
+  }
+}
+
 export class IPCTransport extends EventEmitter2 implements Transport {
 
   private initiated = false // tslint:disable-line
-  private logger: Function = Debug('axm:transport:ipc')
-  private onMessage: any | undefined
+  private logger: Debugger = Debug('axm:transport:ipc')
+  private onMessage: MessageHandler | undefined
   private autoExitHandle: NodeJS.Timer | undefined
 
-  init (config?: TransportConfig): Transport {
+  init (_config?: TransportConfig): Transport {
     this.logger('Init new transport service')
     if (this.initiated === true) {
       console.error(`Trying to re-init the transport, please avoid`)
@@ -39,18 +53,18 @@ export class IPCTransport extends EventEmitter2 implements Transport {
     // clean listener if event loop is empty
     // important to ensure apm will not prevent application to stop
     this.autoExitHandle = setInterval(() => {
-      // @ts-expect-error
-      const currentProcess: any = (cluster.isWorker) ? cluster.worker.process : process
+      const clusterWithWorker = cluster as ClusterWithWorker
+      const currentProcess: NodeProcessWithInternals = (clusterWithWorker.isWorker && clusterWithWorker.worker) ? clusterWithWorker.worker.process : process
 
-      if (currentProcess._getActiveHandles().length === 3) {
-        const handlers: any = currentProcess._getActiveHandles().map(h => h.constructor.name)
+      if (typeof currentProcess._getActiveHandles === "function" && currentProcess._getActiveHandles().length === 3) {
+        const handlers: string[] = currentProcess._getActiveHandles().map((h) => h.constructor.name)
 
         if (handlers.includes('Pipe') === true &&
-            handlers.includes('Socket') === true) {
+            handlers.includes('Socket') === true && this.onMessage) {
           process.removeListener('message', this.onMessage)
-          const tmp = setTimeout(_ => {
+          const tmp = setTimeout((_: unknown) => {
             this.logger(`Still alive, listen back to IPC`)
-            process.on('message', this.onMessage)
+            if (this.onMessage) process.on('message', this.onMessage)
           }, 200)
           tmp.unref()
         }
@@ -61,7 +75,7 @@ export class IPCTransport extends EventEmitter2 implements Transport {
   }
 
   setMetrics (metrics: InternalMetric[]) {
-    const serializedMetric = metrics.reduce((object, metric: InternalMetric) => {
+    const serializedMetric = metrics.reduce((object: Record<string, unknown>, metric: InternalMetric) => {
       if (typeof metric.name !== 'string') return object
       object[metric.name] = {
         historic: metric.historic,
@@ -84,12 +98,12 @@ export class IPCTransport extends EventEmitter2 implements Transport {
     })
   }
 
-  setOptions (options) {
-    this.logger(`Set options: [${Object.keys(options).join(',')}]`)
+  setOptions (options: unknown) {
+    this.logger(`Set options: [${options && typeof options === 'object' ? Object.keys(options).join(',') : ''}]`)
     return this.send('axm:option:configuration', options)
   }
 
-  send (channel, payload) {
+  send (channel: string, payload: unknown): number | void {
     if (typeof process.send !== 'function') return -1
     if (process.connected === false) {
       console.error('Process disconnected from parent! (not connected)')

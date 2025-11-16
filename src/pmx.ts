@@ -1,7 +1,8 @@
 'use strict'
 
-import Configuration from './configuration'
+import Configuration, { ConfigObject } from './configuration'
 import Debug from 'debug'
+import type { Debugger } from 'debug'
 import { ServiceManager } from './serviceManager'
 import { createTransport, TransportConfig, Transport } from './services/transport'
 import { FeatureManager } from './featureManager'
@@ -75,13 +76,13 @@ export const defaultConfig: IOConfig = {
 
 export default class PMX {
 
-  private initialConfig: IOConfig
+  private initialConfig!: IOConfig
   private featureManager: FeatureManager = new FeatureManager()
   private transport: Transport | null = null
   private actionService: ActionService | null = null
   private metricService: MetricService | null = null
   private runtimeStatsService: RuntimeStatsService | null = null
-  private logger: Function = Debug('axm:main')
+  private logger: Debugger = Debug('axm:main')
   private initialized: boolean = false
   public Entrypoint: { new(): Entrypoint } = Entrypoint
 
@@ -141,7 +142,7 @@ export default class PMX {
     // init features
     this.featureManager.init(config)
 
-    Configuration.init(config)
+    Configuration.init(config as unknown as ConfigObject)
     // save the configuration
     this.initialConfig = config
     this.initialized = true
@@ -193,9 +194,9 @@ export default class PMX {
   /**
    * Register metrics in bulk
    */
-  metrics (metric: MetricBulk | Array<MetricBulk>): any[] {
+  metrics (metric: MetricBulk | Array<MetricBulk>): Array<Gauge | Counter | Histogram | Meter | Record<string, never>> {
 
-    const res: any[] = []
+    const res: Array<Gauge | Counter | Histogram | Meter | Record<string, never>> = []
     // tslint:disable-next-line
     if (metric === undefined || metric === null) {
       console.error(`Received empty metric to create`)
@@ -225,7 +226,7 @@ export default class PMX {
           continue
         }
         case MetricType.histogram : {
-          res.push(this.histogram(metric as any))
+          res.push(this.histogram(metric as MetricBulk & HistogramOptions))
           continue
         }
         case MetricType.meter : {
@@ -350,7 +351,8 @@ export default class PMX {
     // backward compatiblity
     // tslint:disable-next-line
     if (typeof name === 'object') {
-      const tmp: any = name
+      type ActionObject = { name: string; options?: Object; action?: Function }
+      const tmp: ActionObject = name as unknown as ActionObject
       name = tmp.name
       opts = tmp.options
       fn = tmp.action
@@ -391,7 +393,7 @@ export default class PMX {
     return tracing.getTracer()
   }
 
-  initModule (opts: any, cb?: Function) {
+  initModule (opts: Record<string, unknown>, cb?: (err: null, opts: Record<string, unknown>) => Record<string, unknown>) {
     if (!opts) opts = {}
 
     if (opts.reference) {

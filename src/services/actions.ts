@@ -1,14 +1,15 @@
 import { ServiceManager } from '../serviceManager'
 import { Transport } from './transport'
-import * as Debug from 'debug'
+import Debug from 'debug'
+import type { Debugger } from 'debug'
 
 export class Action {
-  handler: Function
-  name: string
-  type: string
-  isScoped: boolean
+  handler!: Function
+  name!: string
+  type!: string
+  isScoped!: boolean
   callback?: Function
-  arity: number
+  arity!: number
   opts: Object | null | undefined
 }
 
@@ -17,13 +18,14 @@ export class ActionService {
   private timer: NodeJS.Timer | undefined = undefined
   private transport: Transport | undefined = undefined
   private actions: Map<string, Action> = new Map<string, Action>()
-  private logger: Function = Debug('axm:services:actions')
+  private logger: Debugger = Debug('axm:services:actions')
 
-  private listener (data) {
+  private listener (data: unknown) {
     this.logger(`Received new message from reverse`)
     if (!data) return false
 
-    const actionName = data.msg ? data.msg : data.action_name ? data.action_name : data
+    const dataObj = data as { msg?: string; action_name?: string; opts?: unknown; uuid?: string }
+    const actionName = dataObj.msg ? dataObj.msg : dataObj.action_name ? dataObj.action_name : (typeof data === 'string' ? data : '')
     let action = this.actions.get(actionName)
     if (typeof action !== 'object') {
       return this.logger(`Received action ${actionName} but failed to find the implementation`)
@@ -35,8 +37,8 @@ export class ActionService {
       // In case 2 arguments has been set but no options has been transmitted
       if (action.handler.length === 2) {
         let params = {}
-        if (typeof data === 'object') {
-          params = data.opts
+        if (typeof data === 'object' && data !== null) {
+          params = (data as { opts?: unknown }).opts ?? {}
         }
         return action.handler(params, action.callback)
       }
@@ -44,40 +46,37 @@ export class ActionService {
     }
 
     // handle scoped actions
-    if (data.uuid === undefined) {
+    if (dataObj.uuid === undefined) {
       return this.logger(`Received scoped action ${action.name} but without uuid`)
     }
 
     // create a simple object that represent a stream
     const stream = {
-      send : (dt) => {
-        // @ts-ignore thanks mr typescript but i already checked above
-        this.transport.send('axm:scoped_action:stream', {
+      send : (dt: unknown) => {
+        this.transport!.send('axm:scoped_action:stream', {
           data: dt,
-          uuid: data.uuid,
+          uuid: dataObj.uuid,
           action_name: actionName
         })
       },
-      error : (dt) => {
-        // @ts-ignore thanks mr typescript but i already checked above
-        this.transport.send('axm:scoped_action:error', {
+      error : (dt: unknown) => {
+        this.transport!.send('axm:scoped_action:error', {
           data: dt,
-          uuid: data.uuid,
+          uuid: dataObj.uuid,
           action_name: actionName
         })
       },
-      end : (dt) => {
-        // @ts-ignore thanks mr typescript but i already checked above
-        this.transport.send('axm:scoped_action:end', {
+      end : (dt: unknown) => {
+        this.transport!.send('axm:scoped_action:end', {
           data: dt,
-          uuid: data.uuid,
+          uuid: dataObj.uuid,
           action_name: actionName
         })
       }
     }
 
     this.logger(`Succesfully called scoped action ${action.name}`)
-    return action.handler(data.opts || {}, stream)
+    return action.handler(dataObj.opts ?? {}, stream)
   }
 
   init (): void {
@@ -127,9 +126,8 @@ export class ActionService {
       type = 'internal'
     }
 
-    const reply = (data) => {
-      // @ts-ignore thanks mr typescript but i already checked above
-      this.transport.send('axm:reply', {
+    const reply = (data: unknown) => {
+      this.transport!.send('axm:reply', {
         at: new Date().getTime(),
         action_name: actionName,
         return: data
@@ -146,35 +144,6 @@ export class ActionService {
       opts
     }
     this.logger(`Succesfully registered custom action ${action.name}`)
-    this.actions.set(actionName, action)
-    this.transport.addAction(action)
-  }
-
-  /**
-   * Register a scoped action that will be called when we receive a call for this actionName
-   */
-  scopedAction (actionName?: string, handler?: Function) {
-    if (typeof actionName !== 'string') {
-      console.error(`You must define an name when registering an action`)
-      return -1
-    }
-    if (typeof handler !== 'function') {
-      console.error(`You must define an callback when registering an action`)
-      return -1
-    }
-    if (this.transport === undefined) {
-      return this.logger(`Failed to load transport service`)
-    }
-
-    const action: Action = {
-      name: actionName,
-      handler,
-      type: 'scoped',
-      isScoped: true,
-      arity: handler.length,
-      opts: null
-    }
-    this.logger(`Succesfully registered scoped action ${action.name}`)
     this.actions.set(actionName, action)
     this.transport.addAction(action)
   }

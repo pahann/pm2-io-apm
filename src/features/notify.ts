@@ -4,6 +4,7 @@ import { Feature } from '../featureManager'
 import Configuration from '../configuration'
 import { ServiceManager } from '../serviceManager'
 import Debug from 'debug'
+import type { Debugger } from 'debug'
 import { Transport } from '../services/transport'
 import * as semver from 'semver'
 import { Cache, StackTraceParser, StackContext } from '../utils/stackParser'
@@ -11,7 +12,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 
 export class NotifyOptions {
-  catchExceptions: boolean
+  catchExceptions!: boolean
 }
 
 export class ErrorContext {
@@ -32,10 +33,10 @@ const optionsDefault: NotifyOptions = {
 
 export class NotifyFeature implements Feature {
 
-  private logger: Function = Debug('axm:features:notify')
+  private logger: Debugger = Debug('axm:features:notify')
   private transport: Transport | undefined
-  private cache: Cache
-  private stackParser: StackTraceParser
+  private cache!: Cache
+  private stackParser!: StackTraceParser
 
   init (options?: NotifyOptions) {
     if (options === undefined) {
@@ -58,7 +59,9 @@ export class NotifyFeature implements Feature {
           const content = fs.readFileSync(path.resolve(key))
           return content.toString().split(/\r?\n/)
         } catch (err) {
-          this.logger('Error while trying to get file from FS : %s', err.message || err)
+          if (err instanceof Error) {
+            this.logger('Error while trying to get file from FS : %s', err.message || err)
+          }
           return null
         }
       },
@@ -77,7 +80,7 @@ export class NotifyFeature implements Feature {
     this.logger('destroy')
   }
 
-  getSafeError (err): Error {
+  getSafeError (err: unknown): Error {
     if (err instanceof Error) return err
 
     let message: string
@@ -132,9 +135,11 @@ export class NotifyFeature implements Feature {
     return this.transport.send('process:exception', payload)
   }
 
-  private onUncaughtException (error) {
+  private onUncaughtException (error: unknown) {
     if (semver.satisfies(process.version, '< 6')) {
-      console.error(error.stack)
+      if (error instanceof Error) {
+        console.error(error.stack)
+      }
     } else {
       console.error(error)
     }
@@ -159,7 +164,7 @@ export class NotifyFeature implements Feature {
     }
   }
 
-  private onUnhandledRejection (error) {
+  private onUnhandledRejection (error: unknown) {
     // see  https://github.com/keymetrics/pm2-io-apm/issues/223
     if (error === undefined) return
 
@@ -196,7 +201,8 @@ export class NotifyFeature implements Feature {
     Configuration.configureModule({
       error : true
     })
-    return function errorHandler (err, req, res, next) {
+    type ExpressRequest = { url?: string; params?: Record<string, unknown>; method?: string; headers?: Record<string, unknown>; body?: unknown; query?: unknown; path?: string; route?: { path?: string; stack?: unknown[] }; user?: { id?: unknown } | null }
+    return function errorHandler (err: unknown, req: ExpressRequest, _res: unknown, next: (err: unknown) => unknown) {
       const safeError = self.getSafeError(err)
       const payload = {
         message: safeError.message,
@@ -213,7 +219,7 @@ export class NotifyFeature implements Feature {
             route: req.route && req.route.path ? req.route.path : undefined
           },
           custom: {
-            user: typeof req.user === 'object' ? req.user.id : undefined
+            user: typeof req.user === 'object' && req.user !== null ? req.user.id : undefined
           }
         }
       }
@@ -230,7 +236,8 @@ export class NotifyFeature implements Feature {
     Configuration.configureModule({
       error : true
     })
-    return async function (ctx, next) {
+    type KoaContext = { request: { url?: string; method?: string; query?: unknown; body?: unknown; path?: string }; params?: Record<string, unknown>; headers?: Record<string, unknown>; _matchedRoute?: string; user?: { id?: unknown } | null }
+    return async function (ctx: KoaContext, next: () => Promise<void>) {
       try {
         await next()
       } catch (err) {
@@ -250,7 +257,7 @@ export class NotifyFeature implements Feature {
               route: ctx._matchedRoute
             },
             custom: {
-              user: typeof ctx.user === 'object' ? ctx.user.id : undefined
+              user: typeof ctx.user === 'object' && ctx.user !== null ? ctx.user.id : undefined
             }
           }
         }

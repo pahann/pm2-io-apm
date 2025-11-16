@@ -1,14 +1,22 @@
 'use strict'
 
 import Debug from 'debug'
+import type { Debugger } from 'debug'
 import utils from '../utils/module'
 import { EventEmitter2 } from 'eventemitter2'
 
+type RuntimeStatsModule = {
+  start?: () => void
+  stop?: () => void
+  on?: (event: string, handler: (data: unknown) => void) => void
+  removeListener?: (event: string, handler: (data: unknown) => void) => void
+}
+
 export class RuntimeStatsService extends EventEmitter2 {
 
-  private logger: any = Debug('axm:services:runtimeStats')
-  private handle: (data: Object) => void | undefined
-  private noduleInstance: any
+  private logger: Debugger = Debug('axm:services:runtimeStats')
+  private handle!: (data: unknown) => void
+  private noduleInstance: RuntimeStatsModule | undefined
   private enabled: boolean = false
 
   init () {
@@ -24,18 +32,23 @@ export class RuntimeStatsService extends EventEmitter2 {
     if (RuntimeStats instanceof Error) {
       return this.logger(`Failed to require module @pm2/node-runtime-stats: ${RuntimeStats.message}`)
     }
-    this.noduleInstance = new RuntimeStats({
+    // Cast to constructor type since we know it's a class if not an Error
+    const RuntimeStatsConstructor = RuntimeStats as new (opts: { delay: number }) => RuntimeStatsModule
+    this.noduleInstance = new RuntimeStatsConstructor({
       delay: 1000
     })
     this.logger('starting runtime stats')
-    this.noduleInstance.start()
-    this.handle = (data) => {
+    if (this.noduleInstance && typeof this.noduleInstance.start === 'function') {
+      this.noduleInstance.start()
+    }
+    this.handle = (data: unknown) => {
       this.logger('received runtime stats', data)
       this.emit('data', data)
     }
     // seriously i just created it two lines above
-    // @ts-ignore
-    this.noduleInstance.on('sense', this.handle)
+    if (this.noduleInstance && typeof this.noduleInstance.on === 'function') {
+      this.noduleInstance.on('sense', this.handle)
+    }
     this.enabled = true
   }
 
@@ -47,10 +60,14 @@ export class RuntimeStatsService extends EventEmitter2 {
   }
 
   destroy () {
-    if (this.noduleInstance !== undefined && this.noduleInstance !== null) {
+    if (this.noduleInstance !== undefined) {
       this.logger('removing listener on runtime stats service')
-      this.noduleInstance.removeListener('sense', this.handle)
-      this.noduleInstance.stop()
+      if (typeof this.noduleInstance.removeListener === 'function') {
+        this.noduleInstance.removeListener('sense', this.handle)
+      }
+      if (typeof this.noduleInstance.stop === 'function') {
+        this.noduleInstance.stop()
+      }
     }
     this.logger('destroy')
   }

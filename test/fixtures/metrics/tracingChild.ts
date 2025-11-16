@@ -1,6 +1,6 @@
 process.env.NODE_ENV='test'
 
-import * as pmx from '../../../src'
+import pmx from '../../../src'
 pmx.init({
   tracing: {
     enabled: true,

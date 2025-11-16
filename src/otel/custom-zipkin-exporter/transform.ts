@@ -20,10 +20,10 @@ import { hrTimeToMicroseconds } from '@opentelemetry/core';
 import * as zipkinTypes from './types';
 
 const ZIPKIN_SPAN_KIND_MAPPING = {
-  [api.SpanKind.CLIENT]: zipkinTypes.SpanKind.CLIENT,
-  [api.SpanKind.SERVER]: zipkinTypes.SpanKind.SERVER,
-  [api.SpanKind.CONSUMER]: zipkinTypes.SpanKind.CONSUMER,
-  [api.SpanKind.PRODUCER]: zipkinTypes.SpanKind.PRODUCER,
+  [api.SpanKind.CLIENT]: 'CLIENT' as zipkinTypes.SpanKind,
+  [api.SpanKind.SERVER]: 'SERVER' as zipkinTypes.SpanKind,
+  [api.SpanKind.CONSUMER]: 'CONSUMER' as zipkinTypes.SpanKind,
+  [api.SpanKind.PRODUCER]: 'PRODUCER' as zipkinTypes.SpanKind,
   // When absent, the span is local.
   [api.SpanKind.INTERNAL]: undefined,
 };

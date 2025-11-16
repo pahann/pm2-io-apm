@@ -27,13 +27,13 @@ import { Constants } from '../../../constants';
  * send
  */
 export function prepareSend(
-  transport: Transport,
-  headers?: Record<string, string>
+  _transport: Transport,
+  _headers?: Record<string, string>
 ): zipkinTypes.SendFn {
   /**
    * Send spans to the remote Zipkin service.
    */
-  return function send(
+  return function send(this: any,
     zipkinSpans: zipkinTypes.Span[],
     done: (result: ExportResult) => void
   ) {

@@ -5,17 +5,30 @@ import { ServiceManager } from '../serviceManager'
 import { Transport } from '../services/transport'
 import { ActionService } from '../services/actions'
 import MiscUtils from '../utils/miscellaneous'
-import * as Debug from 'debug'
+import Debug from 'debug'
+import type { Debugger } from 'debug'
 
 class CurrentProfile {
-  uuid: string
-  startTime: number
-  initiated: string
+  uuid!: string
+  startTime!: number
+  initiated!: string
+}
+
+type V8ProfileSnapshot = {
+  export: (callback: (err: Error | null, result: string) => void) => void
+  delete: () => void
+}
+
+type V8Profiler = {
+  startProfiling: (name?: string) => void
+  stopProfiling: (name?: string) => unknown
+  takeSnapshot: () => V8ProfileSnapshot
+  deleteAllProfiles: () => void
 }
 
 export default class AddonProfiler implements ProfilerType {
 
-  private profiler: any = null
+  private profiler: V8Profiler | null = null
   /**
    * List of modules that we can require as profiler
    * the v8-profiler module has segfault for node > 8
@@ -25,7 +38,7 @@ export default class AddonProfiler implements ProfilerType {
   private actionService: ActionService | undefined
   private transport: Transport | undefined
   private currentProfile: CurrentProfile | null = null
-  private logger: Function = Debug('axm:features:profiling:addon')
+  private logger: Debugger = Debug('axm:features:profiling:addon')
 
   init () {
     for (const moduleName of this.modules) {
@@ -35,7 +48,7 @@ export default class AddonProfiler implements ProfilerType {
       let profiler = utils.loadModule(moduleName)
       // we can fail to require it for some reasons
       if (profiler instanceof Error) continue
-      this.profiler = profiler
+      this.profiler = profiler as V8Profiler
       break
     }
     if (this.profiler === null) {
@@ -83,9 +96,9 @@ export default class AddonProfiler implements ProfilerType {
     this.profiler.deleteAllProfiles()
   }
 
-  private onCPUProfileStart (opts, cb) {
+  private onCPUProfileStart (opts: Record<string, unknown> | ((data: unknown) => void), cb?: (data: unknown) => void) {
     if (typeof cb !== 'function') {
-      cb = opts
+      cb = opts as (data: unknown) => void
       opts = {}
     }
     if (typeof opts !== 'object' || opts === null) {
@@ -107,20 +120,23 @@ export default class AddonProfiler implements ProfilerType {
      // run the callback to acknowledge that we received the action
     cb({ success: true, uuid: this.currentProfile.uuid })
 
+    if (this.profiler === null) {
+      return cb({ err: 'Profiler not available', success: false })
+    }
     this.profiler.startProfiling()
 
-    if (isNaN(parseInt(opts.timeout, 10))) return
+    if (isNaN(parseInt((opts as Record<string, unknown>).timeout as string, 10))) return
     // if the duration is included, handle that ourselves
-    const duration = parseInt(opts.timeout, 10)
-    setTimeout(_ => {
+    const duration = parseInt((opts as Record<string, unknown>).timeout as string, 10)
+    setTimeout((_: unknown) => {
       // it will send the profiling itself
-      this.onCPUProfileStop(_ => {
+      this.onCPUProfileStop((_: unknown) => {
         return
       })
     }, duration)
   }
 
-  private onCPUProfileStop (cb) {
+  private onCPUProfileStop (cb: (data: unknown) => void) {
     if (this.currentProfile === null) {
       return cb({
         err: 'No profiling are already running',
@@ -132,6 +148,9 @@ export default class AddonProfiler implements ProfilerType {
         err: 'No profiling are already running',
         success: false
       })
+    }
+    if (this.profiler === null) {
+      return cb({ err: 'Profiler not available', success: false })
     }
     const profile = this.profiler.stopProfiling()
     const data = JSON.stringify(profile)
@@ -157,9 +176,9 @@ export default class AddonProfiler implements ProfilerType {
   /**
    * Custom action implementation to make a heap snapshot
    */
-  private onHeapdump (opts, cb) {
+  private onHeapdump (opts: Record<string, unknown> | ((data: unknown) => void), cb?: (data: unknown) => void) {
     if (typeof cb !== 'function') {
-      cb = opts
+      cb = opts as (data: unknown) => void
       opts = {}
     }
     if (typeof opts !== 'object' || opts === null) {
@@ -173,18 +192,17 @@ export default class AddonProfiler implements ProfilerType {
     setTimeout(() => {
       const startTime = Date.now()
       this.takeSnapshot()
-        .then((data: string) => {
-          // @ts-ignore thanks mr typescript but its not possible
-          return this.transport.send('profilings', {
+        .then((data: unknown) => {
+          this.transport!.send('profilings', {
             data,
             at: startTime,
-            initiated: typeof opts.initiated === 'string' ? opts.initiated : 'manual',
+            initiated: typeof (opts as Record<string, unknown>).initiated === 'string' ? (opts as Record<string, unknown>).initiated : 'manual',
             duration: Date.now() - startTime,
             type: 'heapdump'
           })
-        }).catch(err => {
-          return cb({
-            success: err.message,
+        }).catch((err: unknown) => {
+          return cb!({
+            success: (err as Error).message,
             err: err
           })
         })
@@ -193,12 +211,15 @@ export default class AddonProfiler implements ProfilerType {
 
   private takeSnapshot () {
     return new Promise((resolve, reject) => {
+      if (this.profiler === null) {
+        return reject(new Error('Profiler not available'))
+      }
       const snapshot = this.profiler.takeSnapshot()
-      snapshot.export((err, data) => {
+      snapshot.export((err: unknown, data: unknown) => {
         if (err) {
           reject(err)
         } else {
-          resolve(data)
+          resolve(data as string)
         }
         // delete the snapshot as soon as we have serialized it
         snapshot.delete()

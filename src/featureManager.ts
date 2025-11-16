@@ -6,9 +6,10 @@ import { IOConfig } from './pmx'
 import { MetricsFeature } from './features/metrics'
 import { TracingFeature } from './features/tracing'
 import { DependenciesFeature } from './features/dependencies'
-import * as Debug from 'debug'
+import Debug from 'debug'
+import type { Debugger } from 'debug'
 
-export function getObjectAtPath (context: Object, path: string): any {
+export function getObjectAtPath (context: Record<string, unknown>, path: string): unknown {
   if (path.indexOf('.') === -1 && path.indexOf('[') === -1) {
     return context[path]
   }
@@ -16,13 +17,19 @@ export function getObjectAtPath (context: Object, path: string): any {
   let crumbs = path.split(/\.|\[|\]/g)
   let i = -1
   let len = crumbs.length
-  let result
+  let result: unknown
 
   while (++i < len) {
     if (i === 0) result = context
-    if (!crumbs[i]) continue
+    const crumb = crumbs[i]
+    if (!crumb) continue
     if (result === undefined) break
-    result = result[crumbs[i]]
+    if (result && typeof result === 'object' && crumb in result) {
+      result = (result as Record<string, unknown>)[crumb]
+    } else {
+      result = undefined
+      break
+    }
   }
 
   return result
@@ -32,11 +39,11 @@ class AvailableFeature {
   /**
    * Name of the feature
    */
-  name: string
+  name!: string
   /**
    * The non-instancied class of the feature, used to init it
    */
-  module: { new(): Feature }
+  module!: { new(): Feature }
   /**
    * Option path is the path of the configuration for this feature
    * Possibles values:
@@ -84,7 +91,7 @@ const availablesFeatures: AvailableFeature[] = [
 
 export class FeatureManager {
 
-  private logger: Function = Debug('axm:features')
+  private logger: Debugger = Debug('axm:features')
   /**
    * Construct all the features and init them with their respective configuration
    * It will return a map with each public API method
@@ -93,18 +100,15 @@ export class FeatureManager {
     for (let availableFeature of availablesFeatures) {
       this.logger(`Creating feature ${availableFeature.name}`)
       const feature = new availableFeature.module()
-      let config: any = undefined
+      let config: unknown
       if (typeof availableFeature.optionsPath !== 'string') {
         config = {}
       } else if (availableFeature.optionsPath === '.') {
         config = options
       } else {
-        config = getObjectAtPath(options, availableFeature.optionsPath)
+        config = getObjectAtPath(options as Record<string, unknown>, availableFeature.optionsPath)
       }
       this.logger(`Init feature ${availableFeature.name}`)
-      // @ts-ignore
-      // thanks mr typescript but we don't know the shape that the
-      // options will be, so we just ignore the warning there
       feature.init(config)
       availableFeature.instance = feature
     }
@@ -135,6 +139,6 @@ export class FeatureManager {
 export class FeatureConfig { }
 
 export interface Feature {
-  init (config?: any): void
+  init (config?: unknown): void
   destroy (): void
 }

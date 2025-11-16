@@ -5,7 +5,39 @@ import * as semver from 'semver'
 import { resolve } from 'path'
 
 import { exec, fork } from 'child_process'
-import * as pmx from '../src'
+import pmx from '../src'
+
+type MetricValue = {
+  value?: number
+  type?: string
+}
+
+type IPCMessageData = {
+  [key: string]: unknown
+  message?: string
+  __name?: string
+  prop1?: string
+  action_name?: string
+  return?: { data?: string }
+  metadata?: { http?: { path?: string; method?: string; route?: string } }
+  module_name?: string
+  module_version?: string
+  apm?: { type?: string; version?: string }
+  metricHistogram?: MetricValue
+  metricInline?: MetricValue
+  toto?: MetricValue
+  id?: string
+  traceId?: string
+  'Heap Usage'?: MetricValue
+  HTTP?: MetricValue
+  'HTTP Mean Latency'?: MetricValue
+  'HTTP P95 Latency'?: MetricValue
+}
+
+type IPCMessage = {
+  type?: string
+  data?: IPCMessageData
+}
 
 const launch = (fixture) => {
   return fork(resolve(__dirname, fixture), [], {
@@ -20,9 +52,9 @@ describe('API', function () {
     it('should receive data from notify', (done) => {
       const child = launch('fixtures/apiNotifyChild.ts')
 
-      child.on('message', msg => {
-        if (msg.data.message === 'myNotify') {
-          expect(msg.data.message).to.equal('myNotify')
+      child.on('message', (msg: IPCMessage) => {
+        if (msg.data?.message === 'myNotify') {
+          expect(msg.data!.message).to.equal('myNotify')
           child.kill('SIGINT')
           done()
         }
@@ -34,18 +66,18 @@ describe('API', function () {
     it('should receive data from metric', (done) => {
       const child = launch('fixtures/apiMetricsChild.ts')
 
-      child.on('message', res => {
+      child.on('message', (res: IPCMessage) => {
         if (res.type === 'axm:monitor') {
           // both metrics aren't used
-          expect(res.data.hasOwnProperty('metric with spaces')).to.equal(false)
-          expect(res.data.hasOwnProperty('metric wi!th special chars % ///')).to.equal(false)
-          expect(res.data.hasOwnProperty('metricHistogram')).to.equal(true)
-          expect(res.data.hasOwnProperty('metricInline')).to.equal(true)
-          expect(res.data.hasOwnProperty('toto')).to.equal(true)
-          expect(res.data.metricHistogram.value).to.equal(10)
-          expect(res.data.metricHistogram.type).to.equal('metric/custom')
-          expect(res.data.metricInline.value).to.equal(11)
-          expect(res.data.toto.value).to.equal(42)
+          expect(res.data!.hasOwnProperty('metric with spaces')).to.equal(false)
+          expect(res.data!.hasOwnProperty('metric wi!th special chars % ///')).to.equal(false)
+          expect(res.data!.hasOwnProperty('metricHistogram')).to.equal(true)
+          expect(res.data!.hasOwnProperty('metricInline')).to.equal(true)
+          expect(res.data!.hasOwnProperty('toto')).to.equal(true)
+          expect(res.data!.metricHistogram!.value).to.equal(10)
+          expect(res.data!.metricHistogram!.type).to.equal('metric/custom')
+          expect(res.data!.metricInline!.value).to.equal(11)
+          expect(res.data!.toto!.value).to.equal(42)
 
           child.kill('SIGINT')
           return done()
@@ -60,12 +92,12 @@ describe('API', function () {
     it('should receive data from action', (done) => {
       const child = launch('fixtures/apiActionsChild')
 
-      child.on('message', res => {
-        if (res.type === 'axm:action' && res.data.action_name === 'testAction') {
-          child.send(res.data.action_name)
+      child.on('message', (res: IPCMessage) => {
+        if (res.type === 'axm:action' && res.data!.action_name === 'testAction') {
+          child.send(res.data!.action_name)
         } else if (res.type === 'axm:reply') {
-          expect(res.data.action_name).to.equal('testAction')
-          expect(res.data.return.data).to.equal('testActionReply')
+          expect(res.data!.action_name).to.equal('testAction')
+          expect(res.data!.return!.data).to.equal('testActionReply')
           child.kill('SIGINT')
           done()
         }
@@ -75,12 +107,12 @@ describe('API', function () {
     it('should receive data from action with conf', (done) => {
       const child = launch('fixtures/apiActionsJsonChild')
 
-      child.on('message', res => {
-        if (res.type === 'axm:action' && res.data.action_name === 'testActionWithConf') {
-          child.send(res.data.action_name)
+      child.on('message', (res: IPCMessage) => {
+        if (res.type === 'axm:action' && res.data!.action_name === 'testActionWithConf') {
+          child.send(res.data!.action_name)
         } else if (res.type === 'axm:reply') {
-          expect(res.data.action_name).to.equal('testActionWithConf')
-          expect(res.data.return.data).to.equal('testActionWithConfReply')
+          expect(res.data!.action_name).to.equal('testActionWithConf')
+          expect(res.data!.return!.data).to.equal('testActionWithConfReply')
           child.kill('SIGINT')
           done()
         }
@@ -145,8 +177,8 @@ describe('API', function () {
     it.skip('should catch signals and launch callback', (done) => {
       const child = launch('fixtures/apiOnExitChild')
 
-      child.on('message', res => {
-        if (res === 'callback') {
+      child.on('message', (res: IPCMessage) => {
+        if ((res as unknown as string) === 'callback') {
           done()
         }
       })
@@ -166,11 +198,11 @@ describe('API', function () {
     it('should catch uncaught exception and launch callback', (done) => {
       const child = launch('fixtures/apiOnExitExceptionChild')
 
-      child.on('message', res => {
+      child.on('message', (res: IPCMessage) => {
         if (res.type === 'process:exception') {
-          assert(!!res.data.message.match(/Cannot read property/))
+          assert(!!res.data!.message!.match(/Cannot read propert(y|ies)/))
         }
-        if (res === 'callback') {
+        if ((res as unknown as string) === 'callback') {
           done()
         }
       })
@@ -199,6 +231,7 @@ describe('API', function () {
         },
         {
           name: 'metricFailure',
+          // @ts-expect-error Testing invalid metric type
           type: 'notExist'
         }
       ])
@@ -212,10 +245,10 @@ describe('API', function () {
     it('should receive data from event', (done) => {
       const child = launch('fixtures/apiBackwardEventChild')
 
-      child.on('message', res => {
+      child.on('message', (res: IPCMessage) => {
         if (res.type === 'human:event') {
-          expect(res.data.__name).to.equal('myEvent')
-          expect(res.data.prop1).to.equal('value1')
+          expect(res.data!.__name).to.equal('myEvent')
+          expect(res.data!.prop1).to.equal('value1')
 
           child.kill('SIGINT')
           done()
@@ -226,15 +259,15 @@ describe('API', function () {
     it('should receive data from expressErrorHandler', (done) => {
       const child = launch('fixtures/apiBackwardExpressChild')
 
-      child.on('message', msg => {
-        if (msg === 'expressReady') {
+      child.on('message', (msg: IPCMessage) => {
+        if ((msg as unknown as string) === 'expressReady') {
           const httpModule = require('http')
           httpModule.get('http://localhost:3003/error')
         } else if (msg.type === 'process:exception') {
-          expect(msg.data.message).to.equal('toto')
-          expect(msg.data.metadata.http.path).to.equal('/error')
-          expect(msg.data.metadata.http.method).to.equal('GET')
-          expect(msg.data.metadata.http.route).to.equal('/error')
+          expect(msg.data!.message).to.equal('toto')
+          expect(msg.data!.metadata!.http!.path).to.equal('/error')
+          expect(msg.data!.metadata!.http!.method).to.equal('GET')
+          expect(msg.data!.metadata!.http!.route).to.equal('/error')
           child.kill('SIGINT')
           done()
         }
@@ -245,14 +278,14 @@ describe('API', function () {
       if (semver.satisfies(process.version, '<= 6.0.0')) return done()
       const child = launch('fixtures/apiKoaErrorHandler')
 
-      child.on('message', msg => {
-        if (msg === 'ready') {
+      child.on('message', (msg: IPCMessage) => {
+        if ((msg as unknown as string) === 'ready') {
           const httpModule = require('http')
           httpModule.get('http://localhost:3003/error')
         } else if (msg.type === 'process:exception') {
-          expect(msg.data.message).to.equal('toto')
-          expect(msg.data.metadata.http.path).to.equal('/error')
-          expect(msg.data.metadata.http.method).to.equal('GET')
+          expect(msg.data!.message).to.equal('toto')
+          expect(msg.data!.metadata!.http!.path).to.equal('/error')
+          expect(msg.data!.metadata!.http!.method).to.equal('GET')
           child.kill('SIGINT')
           done()
         }
@@ -263,8 +296,8 @@ describe('API', function () {
       if (semver.satisfies(process.version, '<= 6.0.0')) return done()
       const child = launch('fixtures/apiKoaErrorHandler')
 
-      child.on('message', msg => {
-        if (msg === 'ready') {
+      child.on('message', (msg: IPCMessage) => {
+        if ((msg as unknown as string) === 'ready') {
           const httpModule = require('http')
           httpModule.get('http://localhost:3003/error', ({ statusCode }) => {
             expect(statusCode).to.equal(500)
@@ -281,19 +314,19 @@ describe('API', function () {
       let metricsDone = false
       let finished = false
 
-      child.on('message', packet => {
+      child.on('message', (packet: IPCMessage) => {
 
         if (packet.type === 'trace-span') {
-          expect(packet.data.hasOwnProperty('id')).to.equal(true)
-          expect(packet.data.hasOwnProperty('traceId')).to.equal(true)
+          expect(packet.data!.hasOwnProperty('id')).to.equal(true)
+          expect(packet.data!.hasOwnProperty('traceId')).to.equal(true)
           tracingDone = true
         }
 
         if (packet.type === 'axm:monitor') {
-          assert(packet.data['Heap Usage'] !== undefined)
-          if (packet.data['HTTP'] !== undefined) {
-            assert(packet.data['HTTP Mean Latency'] !== undefined)
-            assert(packet.data['HTTP P95 Latency'] !== undefined)
+          assert(packet.data!['Heap Usage'] !== undefined)
+          if (packet.data!['HTTP'] !== undefined) {
+            assert(packet.data!['HTTP Mean Latency'] !== undefined)
+            assert(packet.data!['HTTP P95 Latency'] !== undefined)
             metricsDone = true
           }
         }
@@ -372,13 +405,13 @@ describe('API', function () {
     it('should receive data from init module', (done) => {
       const child = launch('fixtures/apiInitModuleChild')
 
-      child.on('message', pck => {
-        if (pck.type === 'axm:option:configuration' && pck.data.module_name === 'fixtures') {
-          const conf = pck.data
+      child.on('message', (pck: IPCMessage) => {
+        if (pck.type === 'axm:option:configuration' && pck.data!.module_name === 'fixtures') {
+          const conf = pck.data!
           expect(conf.module_version).to.equal('0.0.1')
           expect(typeof conf.module_name).to.equal('string')
-          expect(conf.apm.type).to.equal('node')
-          expect(typeof conf.apm.version).to.equal('string')
+          expect(conf.apm!.type).to.equal('node')
+          expect(typeof conf.apm!.version).to.equal('string')
           child.kill('SIGINT')
           done()
         }

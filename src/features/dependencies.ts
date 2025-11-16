@@ -1,5 +1,6 @@
 import { ServiceManager } from '../serviceManager'
-import * as Debug from 'debug'
+import Debug from 'debug'
+import type { Debugger } from 'debug'
 import { Feature } from '../featureManager'
 import { Transport } from '../services/transport'
 import Configuration from '../configuration'
@@ -10,8 +11,8 @@ type DependencyList = { [name: string]: { version: string }}
 
 export class DependenciesFeature implements Feature {
 
-  private transport: Transport
-  private logger: Function = Debug('axm:features:dependencies')
+  private transport!: Transport
+  private logger: Debugger = Debug('axm:features:dependencies')
 
   init (): void {
     this.transport = ServiceManager.get('transport')

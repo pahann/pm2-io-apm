@@ -2,14 +2,18 @@
 import IO, { IOConfig } from '../pmx'
 const IO_KEY = Symbol.for('@pm2/io')
 
+type GlobalWithIO = typeof globalThis & { [key: symbol]: IO }
+
 export class Entrypoint {
-  private io: IO
+  private io!: IO
 
   constructor () {
     try {
-      this.io = global[IO_KEY].init(this.conf())
+      const globalIO = (global as GlobalWithIO)[IO_KEY]
+      if (!globalIO) throw new Error('IO not initialized')
+      this.io = globalIO.init(this.conf())
 
-      this.onStart(err => {
+      this.onStart((err: unknown) => {
         if (err) {
           console.error(err)
           process.exit(1)
@@ -19,8 +23,8 @@ export class Entrypoint {
         this.events()
         this.actuators()
 
-        this.io.onExit((code, signal) => {
-          this.onStop(err, () => {
+        this.io.onExit((code: unknown, signal: unknown) => {
+          this.onStop(err as Error, () => {
             this.io.destroy()
           }, code, signal)
         })
@@ -49,11 +53,11 @@ export class Entrypoint {
     return
   }
 
-  onStart (cb: Function) {
+  onStart (_cb: (err?: unknown) => void) {
     throw new Error('Entrypoint onStart() not specified')
   }
 
-  onStop (err: Error, cb: Function, code: number, signal: string) {
+  onStop (_err: Error, cb: () => void, _code: unknown, _signal: unknown) {
     return cb()
   }
 

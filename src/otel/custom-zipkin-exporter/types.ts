@@ -171,12 +171,7 @@ export interface Tags {
  *   duration is the delay consuming the message, such as from backlog.
  *   remoteEndpoint - Represents the broker. Leave serviceName absent if unknown.
  */
-export enum SpanKind {
-  CLIENT = 'CLIENT',
-  SERVER = 'SERVER',
-  CONSUMER = 'CONSUMER',
-  PRODUCER = 'PRODUCER',
-}
+export type SpanKind = 'CLIENT' | 'SERVER' | 'CONSUMER' | 'PRODUCER'
 
 /**
  * interface for function that will send zipkin spans

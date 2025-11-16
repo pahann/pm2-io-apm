@@ -1,5 +1,5 @@
 
-export type MissFunction = (key: string) => any
+export type MissFunction = (key: string) => unknown
 export type CacheOptions = {
   miss: MissFunction
   ttl?: number
@@ -22,9 +22,9 @@ export type FrameMetadata = {
  */
 export class Cache {
 
-  private cache: { [key: string]: any } = {}
+  private cache: { [key: string]: unknown } = {}
   private ttlCache: { [key: string]: number } = {}
-  private worker: NodeJS.Timer
+  private worker!: NodeJS.Timer
   private tllTime: number
   private onMiss: MissFunction
 
@@ -42,8 +42,9 @@ export class Cache {
     let keys = Object.keys(this.ttlCache)
     for (let i = 0; i < keys.length; i++) {
       let key = keys[i]
+      if (!key) continue
       let value = this.ttlCache[key]
-      if (Date.now() > value) {
+      if (value !== undefined && Date.now() > value) {
         delete this.cache[key]
         delete this.ttlCache[key]
       }
@@ -74,7 +75,7 @@ export class Cache {
    * @param {String} key
    * @param {Mixed} value
    */
-  set (key: string, value: any) {
+  set (key: string, value: unknown) {
     if (!key || !value) return false
     this.cache[key] = value
     if (this.tllTime > 0) {
@@ -110,7 +111,7 @@ export class StackTraceParser {
     this.contextSize = options.contextSize
   }
 
-  isAbsolute (path) {
+  isAbsolute (path: string) {
     if (process.platform === 'win32') {
       // https://github.com/nodejs/node/blob/b3fcc245fb25539909ef1d5eaa01dbf92e168633/lib/path.js#L56
       let splitDeviceRe = /^([a-zA-Z]:|[\\/]{2}[^\\/]+[\\/]+[^\\/]+)?([\\/])?([\s\S]*?)$/
@@ -145,8 +146,9 @@ export class StackTraceParser {
       source.push(line.replace(/\t/g, '  '))
     })
     // get the line where the call has been made
-    if (context[userFrame.line_number - 1]) {
-      source.push(context[userFrame.line_number - 1].replace(/\t/g, '  ').replace('  ', '>>'))
+    const callLine = context[userFrame.line_number - 1]
+    if (callLine) {
+      source.push(callLine.replace(/\t/g, '  ').replace('  ', '>>'))
     }
     // and get the line after the call
     const postLine = userFrame.line_number + this.contextSize
@@ -162,11 +164,11 @@ export class StackTraceParser {
   retrieveContext (error: Error): StackContext | null {
     if (error.stack === undefined) return null
     const frameRegex = /(\/[^\\\n]*)/g
-    let tmp: any
+    let tmp: RegExpExecArray | null
     let frames: string[] = []
 
     while ((tmp = frameRegex.exec(error.stack))) {  // tslint:disable-line
-      frames.push(tmp[1])
+      if (tmp[1]) frames.push(tmp[1])
     }
     const stackFrames = frames.map((callsite) => {
       if (callsite[callsite.length - 1] === ')') {
@@ -176,7 +178,7 @@ export class StackTraceParser {
 
       return {
         file_name: location[0],
-        line_number: parseInt(location[1], 10)
+        line_number: parseInt(location[1] ?? '0', 10)
       } as FrameMetadata
     })
 

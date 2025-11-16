@@ -1,5 +1,6 @@
 
 process.env.NODE_ENV = 'test';
+process.env.TS_NODE_PROJECT = 'tsconfig.test.json';
 
 module.exports = {
   'allow-uncaught': false,

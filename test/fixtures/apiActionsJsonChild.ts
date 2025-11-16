@@ -1,5 +1,5 @@
 
-import * as pmx from '../../src'
+import pmx from '../../src'
 
 // @ts-ignore
 pmx.action({

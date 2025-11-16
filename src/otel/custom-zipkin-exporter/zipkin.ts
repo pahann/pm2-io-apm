@@ -15,7 +15,7 @@
  */
 
 import { diag } from '@opentelemetry/api';
-import { ExportResult, ExportResultCode, getEnv } from '@opentelemetry/core';
+import { ExportResult, ExportResultCode } from '@opentelemetry/core';
 import { SpanExporter, ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import { prepareSend } from './platform/index';
 import * as zipkinTypes from './types';
@@ -37,7 +37,6 @@ export class CustomZipkinExporter implements SpanExporter {
   private readonly DEFAULT_SERVICE_NAME = 'OpenTelemetry Service';
   private readonly _statusCodeTagName: string;
   private readonly _statusDescriptionTagName: string;
-  private _urlStr: string;
   private _send: zipkinTypes.SendFunction;
   private _getHeaders: zipkinTypes.GetHeaders | undefined;
   private _serviceName?: string;
@@ -47,7 +46,7 @@ export class CustomZipkinExporter implements SpanExporter {
   private transport: Transport = ServiceManager.get('transport')
 
   constructor(config: zipkinTypes.ExporterConfig = {}) {
-    this._urlStr = config.url || getEnv().OTEL_EXPORTER_ZIPKIN_ENDPOINT;
+    // URL is handled by prepareSend function
     this._send = prepareSend(this.transport, config.headers);
     this._serviceName = config.serviceName;
     this._statusCodeTagName =
@@ -72,7 +71,7 @@ export class CustomZipkinExporter implements SpanExporter {
   ): void {
     const serviceName = String(
       this._serviceName ||
-        spans[0].resource.attributes[SemanticResourceAttributes.SERVICE_NAME] ||
+        spans[0]?.resource.attributes[SemanticResourceAttributes.SERVICE_NAME] ||
         this.DEFAULT_SERVICE_NAME
     );
 

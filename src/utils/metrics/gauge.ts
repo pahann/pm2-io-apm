@@ -6,7 +6,7 @@ export default class Gauge {
     return this.value
   }
 
-  set (value) {
+  set (value: number) {
     this.used = true
     this.value = value
   }

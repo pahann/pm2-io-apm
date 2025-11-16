@@ -2,7 +2,8 @@ import { Feature } from '../featureManager'
 import AddonProfiler from '../profilers/addonProfiler'
 import InspectorProfiler from '../profilers/inspectorProfiler'
 import { canUseInspector } from '../constants'
-import * as Debug from 'debug'
+import Debug from 'debug'
+import type { Debugger } from 'debug'
 
 export interface ProfilerType {
   init (): void
@@ -11,9 +12,9 @@ export interface ProfilerType {
 }
 
 export class ProfilingConfig {
-  cpuJS: boolean
-  heapSnapshot: boolean
-  heapSampling: boolean
+  cpuJS!: boolean
+  heapSnapshot!: boolean
+  heapSampling!: boolean
   implementation?: string
 }
 
@@ -34,7 +35,7 @@ const disabledProfilingConfig: ProfilingConfig = {
 export class ProfilingFeature implements Feature {
 
   private profiler: ProfilerType | undefined
-  private logger: Function = Debug('axm:features:profiling')
+  private logger: Debugger = Debug('axm:features:profiling')
 
   init (config?: ProfilingConfig | boolean) {
     if (config === true) {

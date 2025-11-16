@@ -7,13 +7,14 @@ import { ActionService } from '../services/actions'
 import MiscUtils from '../utils/miscellaneous'
 import { InspectorService } from '../services/inspector'
 import * as inspector from 'inspector'
-import * as Debug from 'debug'
+import Debug from 'debug'
+import type { Debugger } from 'debug'
 import * as semver from 'semver'
 
 class CurrentProfile {
-  uuid: string
-  startTime: number
-  initiated: string
+  uuid!: string
+  startTime!: number
+  initiated!: string
 }
 
 export default class InspectorProfiler implements ProfilerType {
@@ -22,8 +23,8 @@ export default class InspectorProfiler implements ProfilerType {
   private actionService: ActionService | undefined
   private transport: Transport | undefined
   private currentProfile: CurrentProfile | null = null
-  private logger: Function = Debug('axm:features:profiling:inspector')
-  private isNode11: boolean = semver.satisfies(semver.clean(process.version), '>11.x')
+  private logger: Debugger = Debug('axm:features:profiling:inspector')
+  private isNode11: boolean = semver.satisfies(semver.clean(process.version) ?? '0.0.0', '>11.x')
 
   init () {
     this.profiler = ServiceManager.get('inspector')
@@ -78,9 +79,9 @@ export default class InspectorProfiler implements ProfilerType {
     this.profiler.getSession().post('HeapProfiler.disable')
   }
 
-  private onHeapProfileStart (opts, cb) {
+  private onHeapProfileStart (opts: Record<string, unknown> | ((data: unknown) => void), cb?: (data: unknown) => void) {
     if (typeof cb !== 'function') {
-      cb = opts
+      cb = opts as (data: unknown) => void
       opts = {}
     }
     if (typeof opts !== 'object' || opts === null) {
@@ -112,22 +113,22 @@ export default class InspectorProfiler implements ProfilerType {
 
     const defaultSamplingInterval = 16384
     this.profiler.getSession().post('HeapProfiler.startSampling', {
-      samplingInterval: typeof opts.samplingInterval === 'number'
-        ? opts.samplingInterval : defaultSamplingInterval
+      samplingInterval: typeof (opts as Record<string, unknown>).samplingInterval === 'number'
+        ? (opts as Record<string, unknown>).samplingInterval : defaultSamplingInterval
     })
 
-    if (isNaN(parseInt(opts.timeout, 10))) return
+    if (isNaN(parseInt((opts as Record<string, unknown>).timeout as string, 10))) return
     // if the duration is included, handle that ourselves
-    const duration = parseInt(opts.timeout, 10)
-    setTimeout(_ => {
+    const duration = parseInt((opts as Record<string, unknown>).timeout as string, 10)
+    setTimeout((_: unknown) => {
       // it will send the profiling itself
-      this.onHeapProfileStop(_ => {
+      this.onHeapProfileStop((_: unknown) => {
         return
       })
     }, duration)
   }
 
-  private onHeapProfileStop (cb) {
+  private onHeapProfileStop (cb: (data: unknown) => void) {
     if (this.currentProfile === null) {
       return cb({
         err: 'No profiling are already running',
@@ -166,9 +167,9 @@ export default class InspectorProfiler implements ProfilerType {
     })
   }
 
-  private onCPUProfileStart (opts, cb) {
+  private onCPUProfileStart (opts: Record<string, unknown> | ((data: unknown) => void), cb?: (data: unknown) => void) {
     if (typeof cb !== 'function') {
-      cb = opts
+      cb = opts as (data: unknown) => void
       opts = {}
     }
     if (typeof opts !== 'object' || opts === null) {
@@ -199,24 +200,25 @@ export default class InspectorProfiler implements ProfilerType {
 
     // start the idle time reporter to tell V8 when node is idle
     // See https://github.com/nodejs/node/issues/19009#issuecomment-403161559.
+    type ProcessWithProfiler = NodeJS.Process & { _startProfilerIdleNotifier?: () => void }
     if (process.hasOwnProperty('_startProfilerIdleNotifier') === true) {
-      (process as any)._startProfilerIdleNotifier()
+      (process as ProcessWithProfiler)._startProfilerIdleNotifier?.()
     }
 
     this.profiler.getSession().post('Profiler.start')
 
-    if (isNaN(parseInt(opts.timeout, 10))) return
+    if (isNaN(parseInt((opts as Record<string, unknown>).timeout as string, 10))) return
     // if the duration is included, handle that ourselves
-    const duration = parseInt(opts.timeout, 10)
-    setTimeout(_ => {
+    const duration = parseInt((opts as Record<string, unknown>).timeout as string, 10)
+    setTimeout((_: unknown) => {
       // it will send the profiling itself
-      this.onCPUProfileStop(_ => {
+      this.onCPUProfileStop((_: unknown) => {
         return
       })
     }, duration)
   }
 
-  private onCPUProfileStop (cb) {
+  private onCPUProfileStop (cb: (data: unknown) => void) {
     if (this.currentProfile === null) {
       return cb({
         err: 'No profiling are already running',
@@ -236,11 +238,13 @@ export default class InspectorProfiler implements ProfilerType {
 
     // stop the idle time reporter to tell V8 when node is idle
     // See https://github.com/nodejs/node/issues/19009#issuecomment-403161559.
+    type ProcessWithProfilerStop = NodeJS.Process & { _stopProfilerIdleNotifier?: () => void }
     if (process.hasOwnProperty('_stopProfilerIdleNotifier') === true) {
-      (process as any)._stopProfilerIdleNotifier()
+      (process as ProcessWithProfilerStop)._stopProfilerIdleNotifier?.()
     }
 
-    this.profiler.getSession().post('Profiler.stop', (_: Error, res: any) => {
+    type ProfilerStopResult = { profile: inspector.Profiler.Profile }
+    this.profiler.getSession().post('Profiler.stop', (_: Error, res: ProfilerStopResult) => {
       // not possible but thanks mr typescript
       if (this.currentProfile === null) return
       if (this.transport === undefined) return
@@ -266,9 +270,9 @@ export default class InspectorProfiler implements ProfilerType {
   /**
    * Custom action implementation to make a heap snapshot
    */
-  private onHeapdump (opts, cb) {
+  private onHeapdump (opts: Record<string, unknown> | ((data: unknown) => void), cb?: (data: unknown) => void) {
     if (typeof cb !== 'function') {
-      cb = opts
+      cb = opts as (data: unknown) => void
       opts = {}
     }
     if (typeof opts !== 'object' || opts === null) {
@@ -289,12 +293,11 @@ export default class InspectorProfiler implements ProfilerType {
     setTimeout(() => {
       const startTime = Date.now()
       this.takeSnapshot()
-        .then(data => {
-          // @ts-ignore thanks mr typescript but its not possible
-          return this.transport.send('profilings', {
+        .then((data: unknown) => {
+          this.transport!.send('profilings', {
             data,
             at: startTime,
-            initiated: typeof opts.initiated === 'string' ? opts.initiated : 'manual',
+            initiated: typeof (opts as Record<string, unknown>).initiated === 'string' ? (opts as Record<string, unknown>).initiated : 'manual',
             duration: Date.now() - startTime,
             type: 'heapdump'
           })
@@ -313,8 +316,8 @@ export default class InspectorProfiler implements ProfilerType {
       if (this.profiler === undefined) return reject(new Error(`Profiler not available`))
 
       const chunks: Array<string> = []
-      const chunkHandler = (raw: any) => {
-        const data = raw.params as inspector.HeapProfiler.AddHeapSnapshotChunkEventDataType
+      const chunkHandler = (raw: unknown) => {
+        const data = (raw as { params: inspector.HeapProfiler.AddHeapSnapshotChunkEventDataType }).params
         chunks.push(data.chunk)
       }
       this.profiler.getSession().on('HeapProfiler.addHeapSnapshotChunk', chunkHandler)

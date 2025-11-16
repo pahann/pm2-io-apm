@@ -6,7 +6,8 @@ import Histogram from '../utils/metrics/histogram'
 import { ServiceManager, Service } from '../serviceManager'
 import constants from '../constants'
 import { Transport } from './transport'
-import * as Debug from 'debug'
+import Debug from 'debug'
+import type { Debugger } from 'debug'
 import Gauge from '../utils/metrics/gauge'
 
 export const MetricType = {
@@ -64,7 +65,7 @@ export interface InternalMetric {
    * The implementation is the instance of the class that handle the computation
    * of the metric value
    */
-  implementation: any
+  implementation: unknown
   /**
    * Last known value of the metric
    */
@@ -100,11 +101,11 @@ export class Metric {
 }
 
 export class MetricBulk extends Metric {
-  type: MetricType
+  type!: MetricType
 }
 
 export class HistogramOptions extends Metric {
-  measurement: MetricMeasurements
+  measurement!: MetricMeasurements
 }
 
 export class MetricService implements Service {
@@ -112,7 +113,7 @@ export class MetricService implements Service {
   private metrics: Map<string, InternalMetric> = new Map()
   private timer: NodeJS.Timer | null = null
   private transport: Transport | null = null
-  private logger: any = Debug('axm:services:metrics')
+  private logger: Debugger = Debug('axm:services:metrics')
 
   init (): void {
     this.transport = ServiceManager.get('transport')
@@ -174,15 +175,16 @@ export class MetricService implements Service {
       type: MetricType.meter,
       id: opts.id,
       historic: opts.historic,
-      implementation: new Meter(opts),
+      implementation: new Meter(),
       unit: opts.unit,
       handler: function () {
-        return this.implementation.isUsed() ? this.implementation.val() : NaN
+        const impl = this.implementation as Meter
+        return impl.isUsed() ? impl.val() : NaN
       }
     }
     this.registerMetric(metric)
 
-    return metric.implementation
+    return metric.implementation as Meter
   }
 
   counter (opts: Metric): Counter {
@@ -191,15 +193,16 @@ export class MetricService implements Service {
       type: MetricType.counter,
       id: opts.id,
       historic: opts.historic,
-      implementation: new Counter(opts),
+      implementation: new Counter(),
       unit: opts.unit,
       handler: function () {
-        return this.implementation.isUsed() ? this.implementation.val() : NaN
+        const impl = this.implementation as Counter
+        return impl.isUsed() ? impl.val() : NaN
       }
     }
     this.registerMetric(metric)
 
-    return metric.implementation
+    return metric.implementation as Counter
   }
 
   histogram (opts: HistogramOptions): Histogram {
@@ -215,13 +218,14 @@ export class MetricService implements Service {
       implementation: new Histogram(opts),
       unit: opts.unit,
       handler: function () {
-        return this.implementation.isUsed() ?
-          (Math.round(this.implementation.val() * 100) / 100) : NaN
+        const impl = this.implementation as Histogram
+        const value = impl.val() as number
+        return impl.isUsed() ? (Math.round(value * 100) / 100) : NaN
       }
     }
     this.registerMetric(metric)
 
-    return metric.implementation
+    return metric.implementation as Histogram
   }
 
   metric (opts: Metric): Gauge {
@@ -245,14 +249,15 @@ export class MetricService implements Service {
         implementation: new Gauge(),
         unit: opts.unit,
         handler: function () {
-          return this.implementation.isUsed() ? this.implementation.val() : NaN
+          const impl = this.implementation as Gauge
+          return impl.isUsed() ? impl.val() : NaN
         }
       }
     }
 
     this.registerMetric(metric)
 
-    return metric.implementation
+    return metric.implementation as Gauge
   }
 
   deleteMetric (name: string) {

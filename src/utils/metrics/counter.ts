@@ -2,9 +2,9 @@ export default class Counter {
   private _count: number
   private used: boolean = false
 
-  constructor (opts?) {
-    opts = opts || {}
-    this._count = opts.count || 0
+  constructor (opts?: { unit?: string; historic?: boolean; count?: number }) {
+    opts = opts ?? {}
+    this._count = opts.count ?? 0
   }
 
   val () {

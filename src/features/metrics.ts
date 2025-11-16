@@ -1,4 +1,5 @@
 import Debug from 'debug'
+import type { Debugger } from 'debug'
 import { Feature, getObjectAtPath } from '../featureManager'
 import EventLoopHandlesRequestsMetric, { EventLoopMetricOption } from '../metrics/eventLoopMetrics'
 import NetworkMetric, { NetworkTrafficConfig } from '../metrics/network'
@@ -43,11 +44,11 @@ class AvailableMetric {
   /**
    * Name of the feature
    */
-  name: string
+  name!: string
   /**
    * The non-instancied class of the feature, used to init it
    */
-  module: { new(): MetricInterface }
+  module!: { new(): MetricInterface }
   /**
    * Option path is the path of the configuration for this feature
    * Possibles values:
@@ -97,7 +98,7 @@ export interface MetricInterface {
 
 export class MetricsFeature implements Feature {
 
-  private logger: Function = Debug('axm:features:metrics')
+  private logger: Debugger = Debug('axm:features:metrics')
 
   init (options?: Object) {
     if (typeof options !== 'object') options = {}
@@ -105,18 +106,15 @@ export class MetricsFeature implements Feature {
 
     for (let availableMetric of availableMetrics) {
       const metric = new availableMetric.module()
-      let config: any = undefined
+      let config: unknown
       if (typeof availableMetric.optionsPath !== 'string') {
         config = {}
       } else if (availableMetric.optionsPath === '.') {
         config = options
       } else {
-        config = getObjectAtPath(options, availableMetric.optionsPath)
+        config = getObjectAtPath(options as Record<string, unknown>, availableMetric.optionsPath)
       }
-      // @ts-ignore
-      // thanks mr typescript but we don't know the shape that the
-      // options will be, so we just ignore the warning there
-      metric.init(config)
+      metric.init(config as boolean | Object | undefined)
       availableMetric.instance = metric
     }
   }

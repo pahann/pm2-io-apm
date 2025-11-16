@@ -2,7 +2,7 @@ export default class Autocast {
   /**
    * Common strings to cast
    */
-  commonStrings = {
+  commonStrings: Record<string, boolean | undefined | null | number> = {
     'true': true,
     'false': false,
     'undefined': undefined,
@@ -10,17 +10,17 @@ export default class Autocast {
     'NaN': NaN
   }
 
-  process (key,value, o) {
+  process (key: string, value: unknown, o: Record<string, unknown>): void {
     if (typeof(value) === 'object') return
     o[key] = this._cast(value)
   }
 
-  traverse (o,func) {
+  traverse (o: Record<string, unknown>, func: (key: string, value: unknown, obj: Record<string, unknown>) => void): void {
     for (let i in o) {
       func.apply(this,[i,o[i], o])
       if (o[i] !== null && typeof(o[i]) === 'object') {
         // going on step down in the object tree!!
-        this.traverse(o[i],func)
+        this.traverse(o[i] as Record<string, unknown>, func)
       }
     }
   }
@@ -28,16 +28,16 @@ export default class Autocast {
   /**
    * Given a value, try and cast it
    */
-  autocast (s) {
+  autocast (s: unknown): unknown {
     if (typeof(s) === 'object') {
-      this.traverse(s, this.process)
+      this.traverse(s as Record<string, unknown>, this.process)
       return s
     }
 
     return this._cast(s)
   }
 
-  private _cast (s) {
+  private _cast (s: unknown): unknown {
     let key
 
     // Don't cast Date objects
@@ -45,7 +45,7 @@ export default class Autocast {
     if (typeof s === 'boolean') return s
 
     // Try to cast it to a number
-    if (!isNaN(s)) return Number(s)
+    if (typeof s === 'number' || (typeof s === 'string' && !isNaN(Number(s)))) return Number(s)
 
     // Try to make it a common string
     for (key in this.commonStrings) {

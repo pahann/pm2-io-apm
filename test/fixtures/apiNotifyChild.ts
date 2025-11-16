@@ -1,5 +1,5 @@
 
-import * as pmx from '../../src/index'
+import pmx from '../../src/index'
 
 pmx.init()
 try {

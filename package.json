@@ -1,6 +1,6 @@
 {
   "name": "@pm2/io",
-  "version": "7.0.0-dev1",
+  "version": "7.0.0-dev2",
   "description": "PM2.io NodeJS APM",
   "main": "build/main/index.js",
   "typings": "build/main/index.d.ts",
@@ -41,12 +41,15 @@
   },
   "devDependencies": {
     "@types/chai": "4.1.4",
+    "@types/debug": "^4.1.12",
     "@types/express": "~4.16.1",
     "@types/ioredis": "~4.0.6",
     "@types/mocha": "5.2.5",
     "@types/mongodb": "~3.1.19",
     "@types/node": "~18.0.0",
     "@types/redis": "~2.8.10",
+    "@types/semver": "^7.7.1",
+    "@types/shimmer": "^1.2.0",
     "chai": "4.1.2",
     "express": "^4.17.1",
     "ioredis": "^4.16.3",

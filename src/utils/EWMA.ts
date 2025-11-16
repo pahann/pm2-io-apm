@@ -15,7 +15,7 @@ export default class ExponentiallyWeightedMovingAverage {
     this._alpha = 1 - Math.exp(-this._tickInterval / this._timePeriod)
   }
 
-  update (n) {
+  update (n: number) {
     this._count += n
   }
 
@@ -26,7 +26,7 @@ export default class ExponentiallyWeightedMovingAverage {
     this._rate += (this._alpha * (instantRate - this._rate))
   }
 
-  rate (timeUnit) {
+  rate (timeUnit: number) {
     return (this._rate || 0) * timeUnit
   }
 }

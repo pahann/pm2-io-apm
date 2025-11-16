@@ -2,7 +2,7 @@
 import { assert, expect } from 'chai'
 import { exec, fork } from 'child_process'
 import { resolve } from 'path'
-import * as pmx from '../src'
+import pmx from '../src'
 
 const launch = (fixture) => {
   return fork(resolve(__dirname, fixture), [], {

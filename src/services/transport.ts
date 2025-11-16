@@ -1,6 +1,6 @@
 
 import { Action } from './actions'
-import { Metric, InternalMetric } from './metrics'
+import { InternalMetric } from './metrics'
 import { IPCTransport } from '../transports/IPCTransport'
 // import { WebsocketTransport } from '../transports/WebsocketTransport'
 import { EventEmitter2 } from 'eventemitter2'
@@ -9,15 +9,15 @@ export class TransportConfig {
   /**
    * public key of the bucket to which the agent need to connect
    */
-  publicKey: string
+  publicKey!: string
   /**
    * Secret key of the bucket to which the agent need to connect
    */
-  secretKey: string
+  secretKey!: string
   /**
    * The name of the application/service that will be reported to PM2 Enterprise
    */
-  appName: string
+  appName!: string
   /**
    * The name of the server as reported in PM2 Enterprise
    *
@@ -73,13 +73,13 @@ export interface Transport extends EventEmitter2 {
   /**
    * Declare options for process
    */
-  setOptions: (options: any) => void
+  setOptions: (options: unknown) => void
 }
 
 /**
  * Init a transporter implementation with a specific config
  */
-export function createTransport (name: string, config: TransportConfig): Transport {
+export function createTransport (_name: string, config: TransportConfig): Transport {
   const transport = new IPCTransport()
   transport.init(config)
   return transport

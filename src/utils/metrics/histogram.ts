@@ -4,9 +4,9 @@ export default class Histogram {
   private _measurement
   private _callFn
 
-  private _sample = new EDS()
-  private _min
-  private _max
+  private _sample = new EDS({ alpha: 0.015 })
+  private _min: number | undefined
+  private _max: number | undefined
   private _count: number = 0
   private _sum: number = 0
 
@@ -18,13 +18,13 @@ export default class Histogram {
 
   private used: boolean = false
 
-  constructor (opts?) {
+  constructor (opts?: { measurement?: string }) {
     opts = opts || {}
 
     this._measurement = opts.measurement
-    this._callFn = null
+    this._callFn = undefined
 
-    const methods = {
+    const methods: Record<string, (() => unknown) | undefined> = {
       min      : this.getMin,
       max      : this.getMax,
       sum      : this.getSum,
@@ -32,24 +32,24 @@ export default class Histogram {
       variance : this._calculateVariance,
       mean     : this._calculateMean,
       // stddev   : this._calculateStddev,
-      ema      : this.getEma()
+      ema      : this.getEma
     }
 
-    if (methods.hasOwnProperty(this._measurement)) {
+    if (this._measurement && methods.hasOwnProperty(this._measurement)) {
       this._callFn = methods[this._measurement]
     } else {
       this._callFn = function () {
         const percentiles = this.percentiles([0.5, 0.75, 0.95, 0.99, 0.999])
 
-        const medians = {
-          median   : percentiles[0.5],
-          p75      : percentiles[0.75],
-          p95      : percentiles[0.95],
-          p99      : percentiles[0.99],
-          p999     : percentiles[0.999]
+        const medians: Record<string, number | null> = {
+          median   : percentiles[0.5] ?? null,
+          p75      : percentiles[0.75] ?? null,
+          p95      : percentiles[0.95] ?? null,
+          p99      : percentiles[0.99] ?? null,
+          p999     : percentiles[0.999] ?? null
         }
 
-        return medians[this._measurement]
+        return this._measurement ? medians[this._measurement] : null
       }
     }
   }
@@ -66,7 +66,7 @@ export default class Histogram {
     this._updateEma(value)
   }
 
-  percentiles (percentiles) {
+  percentiles (percentiles: number[]): Record<number, number | null> {
     const values = this._sample
       .toArray()
       .sort(function (a, b) {
@@ -75,9 +75,10 @@ export default class Histogram {
           : a - b
       })
 
-    const results = {}
+    const results: Record<number, number | null> = {}
     for (let i = 0; i < percentiles.length; i++) {
       const percentile = percentiles[i]
+      if (percentile === undefined) continue
       if (!values.length) {
         results[percentile] = null
         continue
@@ -86,12 +87,16 @@ export default class Histogram {
       const pos = percentile * (values.length + 1)
 
       if (pos < 1) {
-        results[percentile] = values[0]
+        results[percentile] = values[0] ?? null
       } else if (pos >= values.length) {
-        results[percentile] = values[values.length - 1]
+        results[percentile] = values[values.length - 1] ?? null
       } else {
         const lower = values[Math.floor(pos) - 1]
         const upper = values[Math.ceil(pos) - 1]
+        if (lower === undefined || upper === undefined) {
+          results[percentile] = null
+          continue
+        }
 
         results[percentile] = lower + (pos - Math.floor(pos)) * (upper - lower)
       }
@@ -100,7 +105,7 @@ export default class Histogram {
     return results
   }
 
-  val () {
+  val (): unknown {
     if (typeof(this._callFn) === 'function') {
       return this._callFn()
     } else {
@@ -108,27 +113,27 @@ export default class Histogram {
     }
   }
 
-  getMin () {
+  getMin (): number | undefined {
     return this._min
   }
 
-  getMax () {
+  getMax (): number | undefined {
     return this._max
   }
 
-  getSum () {
+  getSum (): number {
     return this._sum
   }
 
-  getCount () {
+  getCount (): number {
     return this._count
   }
 
-  getEma () {
+  getEma (): number {
     return this._ema
   }
 
-  fullResults () {
+  fullResults (): Record<string, number | null | undefined> {
     const percentiles = this.percentiles([0.5, 0.75, 0.95, 0.99, 0.999])
 
     return {
@@ -148,20 +153,23 @@ export default class Histogram {
     }
   }
 
-  _updateMin (value) {
+  _updateMin (value: number): void {
     if (this._min === undefined || value < this._min) {
       this._min = value
     }
   }
 
-  _updateMax (value) {
+  _updateMax (value: number): void {
     if (this._max === undefined || value > this._max) {
       this._max = value
     }
   }
 
-  _updateVariance (value) {
-    if (this._count === 1) return this._varianceM = value
+  _updateVariance (value: number): void {
+    if (this._count === 1) {
+      this._varianceM = value
+      return
+    }
 
     const oldM = this._varianceM
 
@@ -169,25 +177,28 @@ export default class Histogram {
     this._varianceS += ((value - oldM) * (value - this._varianceM))
   }
 
-  _updateEma (value) {
-    if (this._count <= 1) return this._ema = this._calculateMean()
+  _updateEma (value: number): void {
+    if (this._count <= 1) {
+      this._ema = this._calculateMean()
+      return
+    }
     const alpha = 2 / (1 + this._count)
     this._ema = value * alpha + this._ema * (1 - alpha)
   }
 
-  _calculateMean () {
+  _calculateMean (): number {
     return (this._count === 0)
       ? 0
       : this._sum / this._count
   }
 
-  _calculateVariance () {
+  _calculateVariance (): number | null {
     return (this._count <= 1)
       ? null
       : this._varianceS / (this._count - 1)
   }
 
-  isUsed () {
+  isUsed (): boolean {
     return this.used
   }
 

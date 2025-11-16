@@ -1,4 +1,4 @@
 
-import * as io from '../../src'
+import io from '../../src'
 
 io.init()

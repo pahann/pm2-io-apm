@@ -1,4 +1,4 @@
-import * as pmx from '../../../src'
+import pmx from '../../../src'
 pmx.init({
   actions: {
     eventLoopDump: true

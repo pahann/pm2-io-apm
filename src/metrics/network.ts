@@ -1,14 +1,15 @@
 import * as netModule from 'net'
 import { MetricService, MetricType } from '../services/metrics'
 import { MetricInterface } from '../features/metrics'
-import * as Debug from 'debug'
+import Debug from 'debug'
+import type { Debugger } from 'debug'
 import Meter from '../utils/metrics/meter'
 import * as shimmer from 'shimmer'
 import { ServiceManager } from '../serviceManager'
 
 export class NetworkTrafficConfig {
-  upload: boolean
-  download: boolean
+  upload!: boolean
+  download!: boolean
 }
 
 const defaultConfig: NetworkTrafficConfig = {
@@ -24,8 +25,8 @@ const allEnabled: NetworkTrafficConfig = {
 export default class NetworkMetric implements MetricInterface {
   private metricService: MetricService | undefined
   private timer: NodeJS.Timer | undefined
-  private logger: Function = Debug('axm:features:metrics:network')
-  private socketProto: any
+  private logger: Debugger = Debug('axm:features:metrics:network')
+  private socketProto: unknown
 
   init (config?: NetworkTrafficConfig | boolean) {
     if (config === false) return
@@ -56,8 +57,8 @@ export default class NetworkMetric implements MetricInterface {
     }
 
     if (this.socketProto !== undefined && this.socketProto !== null) {
-      shimmer.unwrap(this.socketProto, 'read')
-      shimmer.unwrap(this.socketProto, 'write')
+      shimmer.unwrap(this.socketProto as Record<string, unknown>, 'read')
+      shimmer.unwrap(this.socketProto as Record<string, unknown>, 'write')
     }
 
     this.logger('destroy')
@@ -75,7 +76,8 @@ export default class NetworkMetric implements MetricInterface {
       implementation: downloadMeter,
       unit: 'kb/s',
       handler: function () {
-        return Math.floor(this.implementation.val() / 1024 * 1000) / 1000
+        const impl = this.implementation as Meter
+        return Math.floor((impl.val() as number) / 1024 * 1000) / 1000
       }
     })
 
@@ -86,16 +88,17 @@ export default class NetworkMetric implements MetricInterface {
       if (isWrapped) {
         return this.logger(`Already patched socket read, canceling`)
       }
-      shimmer.wrap(netModule.Socket.prototype, 'read', function (original) {
-        return function () {
-          this.on('data', (data) => {
-            if (typeof data.length === 'number') {
+      type ReadableSocket = { on: (event: string, handler: (data: Buffer | string) => void) => void; read: (size?: number) => unknown }
+      shimmer.wrap(netModule.Socket.prototype as unknown as Record<string, unknown>, 'read', function (original: (size?: number) => unknown) {
+        return function (this: ReadableSocket, size?: number) {
+          this.on('data', (data: Buffer | string) => {
+            if (data && typeof data === 'object' && 'length' in data) {
               downloadMeter.mark(data.length)
             }
           })
-          return original.apply(this, arguments)
+          return original.call(this, size)
         }
-      })
+      } as (original: unknown) => unknown)
     }, 500)
   }
 
@@ -110,7 +113,8 @@ export default class NetworkMetric implements MetricInterface {
       implementation: uploadMeter,
       unit: 'kb/s',
       handler: function () {
-        return Math.floor(this.implementation.val() / 1024 * 1000) / 1000
+        const impl = this.implementation as Meter
+        return Math.floor((impl.val() as number) / 1024 * 1000) / 1000
       }
     })
 
@@ -121,14 +125,15 @@ export default class NetworkMetric implements MetricInterface {
       if (isWrapped) {
         return this.logger(`Already patched socket write, canceling`)
       }
-      shimmer.wrap(netModule.Socket.prototype, 'write', function (original) {
-        return function (data) {
-          if (typeof data.length === 'number') {
-            uploadMeter.mark(data.length)
+      type WriteFn = (buffer: string | Uint8Array, cb?: (err?: Error) => void) => boolean
+      shimmer.wrap(netModule.Socket.prototype as unknown as Record<string, unknown>, 'write', function (original: WriteFn) {
+        return function (this: unknown, buffer: string | Uint8Array, cb?: (err?: Error) => void) {
+          if (buffer && typeof buffer === 'object' && 'length' in buffer && typeof buffer.length === 'number') {
+            uploadMeter.mark(buffer.length)
           }
-          return original.apply(this, arguments)
+          return original.call(this, buffer, cb)
         }
-      })
+      } as (original: unknown) => unknown)
     }, 500)
   }
 }

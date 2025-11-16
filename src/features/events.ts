@@ -1,19 +1,20 @@
 import { ServiceManager } from '../serviceManager'
 import { Feature } from '../featureManager'
 import { Transport } from '../services/transport'
-import * as Debug from 'debug'
+import Debug from 'debug'
+import type { Debugger } from 'debug'
 
 export class EventsFeature implements Feature {
 
   private transport: Transport | undefined
-  private logger: Function = Debug('axm:features:events')
+  private logger: Debugger = Debug('axm:features:events')
 
   init (): void {
     this.transport = ServiceManager.get('transport')
     this.logger('init')
   }
 
-  emit (name?: string, data?: any) {
+  emit (name?: string, data?: unknown) {
     if (typeof name !== 'string') {
       console.error('event name must be a string')
       return console.trace()
@@ -27,11 +28,13 @@ export class EventsFeature implements Feature {
       return console.trace()
     }
 
-    let inflightObj: Object | any = {}
+    let inflightObj: Record<string, unknown> = {}
     try {
       inflightObj = JSON.parse(JSON.stringify(data))
     } catch (err) {
-      return console.log('Failed to serialize the event data', err.message)
+      if (err instanceof Error) {
+        return console.log('Failed to serialize the event data', err.message)
+      }
     }
 
     inflightObj.__name = name

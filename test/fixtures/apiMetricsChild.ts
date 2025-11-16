@@ -1,5 +1,5 @@
 
-import * as io from '../../src'
+import io from '../../src'
 import { MetricType } from '../../src/services/metrics'
 
 const [ one, two, three ] = io.metrics(

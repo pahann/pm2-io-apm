@@ -2,22 +2,32 @@
 
 import { MetricService, InternalMetric, MetricType } from '../services/metrics'
 import { ServiceManager } from '../serviceManager'
-import * as Debug from 'debug'
+import Debug from 'debug'
+import type { Debugger } from 'debug'
 import { MetricInterface } from '../features/metrics'
 import Histogram from '../utils/metrics/histogram'
 import { RuntimeStatsService } from '../services/runtimeStats'
+
+type ProcessWithInternals = NodeJS.Process & {
+  _getActiveRequests?: () => unknown[]
+  _getActiveHandles?: () => unknown[]
+}
+
+type RuntimeStats = {
+  ticks?: number[]
+}
 
 export class EventLoopMetricOption {
   /**
    * Toggle the metrics about the actives handles/requests in the event loop
    * see http://docs.libuv.org/en/v1.x/design.html#handles-and-requests
    */
-  eventLoopActive: boolean
+  eventLoopActive!: boolean
   /**
    * Toggle the metrics about how much time the event loop use to make one loop
    * see http://docs.libuv.org/en/v1.x/design.html#the-i-o-loop
    */
-  eventLoopDelay: boolean
+  eventLoopDelay!: boolean
 }
 
 const defaultOptions: EventLoopMetricOption = {
@@ -28,13 +38,13 @@ const defaultOptions: EventLoopMetricOption = {
 export default class EventLoopHandlesRequestsMetric implements MetricInterface {
 
   private metricService: MetricService | undefined
-  private logger: any = Debug('axm:features:metrics:eventloop')
+  private logger: Debugger = Debug('axm:features:metrics:eventloop')
   private requestTimer: NodeJS.Timer | undefined
   private handleTimer: NodeJS.Timer | undefined
   private delayTimer: NodeJS.Timer | undefined
   private delayLoopInterval: number = 1000
   private runtimeStatsService: RuntimeStatsService | undefined
-  private handle: (data: any) => void | undefined
+  private handle!: (data: unknown) => void
 
   init (config?: EventLoopMetricOption | boolean) {
     if (config === false) return
@@ -48,33 +58,38 @@ export default class EventLoopHandlesRequestsMetric implements MetricInterface {
     if (this.metricService === undefined) return this.logger('Failed to load metric service')
 
     this.logger('init')
-    if (typeof (process as any)._getActiveRequests === 'function' && config.eventLoopActive === true) {
+    const processWithInternals = process as ProcessWithInternals
+    if (typeof processWithInternals._getActiveRequests === 'function' && config.eventLoopActive === true) {
       const requestMetric = this.metricService.metric({
         name : 'Active requests',
         id: 'internal/libuv/requests',
         historic: true
       })
       this.requestTimer = setInterval(_ => {
-        requestMetric.set((process as any)._getActiveRequests().length)
+        if (processWithInternals._getActiveRequests) {
+          requestMetric.set(processWithInternals._getActiveRequests().length)
+        }
       }, 1000)
       this.requestTimer.unref()
     }
 
-    if (typeof (process as any)._getActiveHandles === 'function' && config.eventLoopActive === true) {
+    if (typeof processWithInternals._getActiveHandles === 'function' && config.eventLoopActive === true) {
       const handleMetric = this.metricService.metric({
         name : 'Active handles',
         id: 'internal/libuv/handles',
         historic: true
       })
       this.handleTimer = setInterval(_ => {
-        handleMetric.set((process as any)._getActiveHandles().length)
+        if (processWithInternals._getActiveHandles) {
+          handleMetric.set(processWithInternals._getActiveHandles().length)
+        }
       }, 1000)
       this.handleTimer.unref()
     }
 
     if (config.eventLoopDelay === false) return
 
-    const histogram = new Histogram()
+    const histogram = new Histogram({ measurement: 'mean' })
 
     const uvLatencyp50: InternalMetric = {
       name: 'Event Loop Latency',
@@ -83,8 +98,8 @@ export default class EventLoopHandlesRequestsMetric implements MetricInterface {
       historic: true,
       implementation: histogram,
       handler: function () {
-        const percentiles = this.implementation.percentiles([ 0.5 ])
-        if (percentiles[0.5] === null) return null
+        const percentiles = (this.implementation as Histogram).percentiles([ 0.5 ])
+        if (percentiles[0.5] === null || percentiles[0.5] === undefined) return null
         return percentiles[0.5].toFixed(2)
       },
       unit: 'ms'
@@ -96,8 +111,8 @@ export default class EventLoopHandlesRequestsMetric implements MetricInterface {
       historic: true,
       implementation: histogram,
       handler: function () {
-        const percentiles = this.implementation.percentiles([ 0.95 ])
-        if (percentiles[0.95] === null) return null
+        const percentiles = (this.implementation as Histogram).percentiles([ 0.95 ])
+        if (percentiles[0.95] === null || percentiles[0.95] === undefined) return null
         return percentiles[0.95].toFixed(2)
       },
       unit: 'ms'
@@ -120,9 +135,10 @@ export default class EventLoopHandlesRequestsMetric implements MetricInterface {
       this.delayTimer.unref()
     } else {
       this.logger('using runtimeStats module as data source for event loop latency')
-      this.handle = (stats: any) => {
-        if (typeof stats !== 'object' || !Array.isArray(stats.ticks)) return
-        stats.ticks.forEach((tick: number) => {
+      this.handle = (stats: unknown) => {
+        const runtimeStats = stats as RuntimeStats
+        if (typeof runtimeStats !== 'object' || !Array.isArray(runtimeStats.ticks)) return
+        runtimeStats.ticks.forEach((tick: number) => {
           histogram.update(tick)
         })
       }

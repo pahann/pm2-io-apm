@@ -1,5 +1,5 @@
 
-import * as pmx from '../../src'
+import pmx from '../../src'
 
 process.env.fixtures = JSON.stringify({
   envVar: 'value',

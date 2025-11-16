@@ -1,7 +1,7 @@
 
 import * as assert from 'assert'
 import 'mocha'
-import * as io from '../../src'
+import io from '../../src'
 // install patch before requiring the helpers
 io.init()
 import { WSServer, HandshakeServer } from './helper'

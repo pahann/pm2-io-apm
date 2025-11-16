@@ -6,16 +6,16 @@ export default class ExponentiallyDecayingSample {
   private ALPHA = 0.015
   private SIZE = 1028
 
-  private _elements
-  private _rescaleInterval
-  private _alpha
-  private _size
-  private _landmark
-  private _nextRescale
-  private _mean
+  private _elements: BinaryHeap
+  private _rescaleInterval: number
+  private _alpha: number
+  private _size: number
+  private _landmark: number | null = null
+  private _nextRescale: number | null = null
+  private _random: () => number
 
-  constructor (options?) {
-    options = options || {}
+  constructor (options?: { rescaleInterval?: number; alpha?: number; size?: number; random?: () => number }) {
+    options = options ?? {}
 
     this._elements = new BinaryHeap({
       score: function (element) {
@@ -23,23 +23,20 @@ export default class ExponentiallyDecayingSample {
       }
     })
 
-    this._rescaleInterval = options.rescaleInterval || this.RESCALE_INTERVAL
-    this._alpha = options.alpha || this.ALPHA
-    this._size = options.size || this.SIZE
-    this._random = options.random || this._random
-    this._landmark = null
-    this._nextRescale = null
-    this._mean = null
+    this._rescaleInterval = options.rescaleInterval ?? this.RESCALE_INTERVAL
+    this._alpha = options.alpha ?? this.ALPHA
+    this._size = options.size ?? this.SIZE
+    this._random = options.random ?? (() => Math.random())
   }
 
-  update (value, timestamp?) {
+  update (value: number, timestamp?: number) {
     const now = Date.now()
     if (!this._landmark) {
       this._landmark = now
       this._nextRescale = this._landmark + this._rescaleInterval
     }
 
-    timestamp = timestamp || now
+    timestamp = timestamp ?? now
 
     const newSize = this._elements.size() + 1
 
@@ -50,12 +47,15 @@ export default class ExponentiallyDecayingSample {
 
     if (newSize <= this._size) {
       this._elements.add(element)
-    } else if (element.priority > this._elements.first().priority) {
-      this._elements.removeFirst()
-      this._elements.add(element)
+    } else {
+      const first = this._elements.first()
+      if (first && element.priority > first.priority) {
+        this._elements.removeFirst()
+        this._elements.add(element)
+      }
     }
 
-    if (now >= this._nextRescale) this._rescale(now)
+    if (this._nextRescale !== null && now >= this._nextRescale) this._rescale(now)
   }
 
   toSortedArray () {
@@ -74,29 +74,26 @@ export default class ExponentiallyDecayingSample {
       })
   }
 
-  _weight (age) {
+  _weight (age: number) {
     // We divide by 1000 to not run into huge numbers before reaching a
     // rescale event.
     return Math.exp(this._alpha * (age / 1000))
   }
 
-  _priority (age) {
+  _priority (age: number) {
     return this._weight(age) / this._random()
   }
 
-  _random () {
-    return Math.random()
-  }
 
-  _rescale (now) {
-    now = now || Date.now()
+  _rescale (now: number) {
+    now = now ?? Date.now()
 
     const self = this
-    const oldLandmark = this._landmark
-    this._landmark = now || Date.now()
+    const oldLandmark = this._landmark ?? 0
+    this._landmark = now ?? Date.now()
     this._nextRescale = now + this._rescaleInterval
 
-    const factor = self._priority(-(self._landmark - oldLandmark))
+    const factor = self._priority(-(self._landmark ?? 0) - oldLandmark)
 
     this._elements
       .toArray()
@@ -105,7 +102,7 @@ export default class ExponentiallyDecayingSample {
       })
   }
 
-  avg (now) {
+  avg (_now?: number) {
     let sum = 0
     this._elements
       .toArray()
