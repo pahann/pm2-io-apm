@@ -1,6 +1,6 @@
 {
   "name": "@pm2/io",
-  "version": "7.0.0-dev5",
+  "version": "7.0.0-dev6",
   "description": "PM2.io NodeJS APM",
   "main": "build/main/index.js",
   "typings": "build/main/index.d.ts",
@@ -75,10 +75,11 @@
   },
   "dependencies": {
     "@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/auto-instrumentations-node": "^0.55.0",
-    "@opentelemetry/exporter-metrics-otlp-http": "^0.57.0",
-    "@opentelemetry/exporter-zipkin": "^1.30.0",
-    "@opentelemetry/sdk-node": "^0.57.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.67.0",
+    "@opentelemetry/core": "^2.2.0",
+    "@opentelemetry/exporter-metrics-otlp-http": "^0.208.0",
+    "@opentelemetry/exporter-zipkin": "^2.2.0",
+    "@opentelemetry/sdk-node": "^0.208.0",
     "debug": "~4.3.1",
     "eventemitter2": "^6.3.1",
     "require-in-the-middle": "^5.0.0",
