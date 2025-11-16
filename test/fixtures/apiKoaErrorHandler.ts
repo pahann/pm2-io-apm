@@ -6,7 +6,6 @@ const app = new Koa()
 
 app.use(pmx.koaErrorHandler())
 
-// @ts-ignore
 app.use(async ctx => {
   ctx.throw(new Error('toto'))
 })

@@ -1,6 +1,6 @@
 
 import { expect } from 'chai'
-import { fork, exec } from 'child_process'
+import { fork } from 'child_process'
 import * as semver from 'semver'
 import { resolve } from 'path'
 // for node 8
@@ -19,7 +19,6 @@ describe('ProfilingAction', function () {
 
     it('should get cpu profile data', (done) => {
       const child = launch('../fixtures/features/profilingChild')
-      let uuid
 
       child.on('message', res => {
 
@@ -29,9 +28,6 @@ describe('ProfilingAction', function () {
 
         if (res.type === 'axm:reply') {
           expect(res.data.return.success).to.equal(true)
-          if (res.data.action_name === 'km:cpu:profiling:start') {
-            uuid = res.data.return.uuid
-          }
         }
         if (res.type === 'profilings') {
           expect(typeof res.data.data).to.equal('string')
@@ -54,7 +50,6 @@ describe('ProfilingAction', function () {
 
     it('should get cpu profile data with timeout', (done) => {
       const child = launch('../fixtures/features/profilingChild')
-      let uuid
 
       child.on('message', res => {
 
@@ -65,7 +60,6 @@ describe('ProfilingAction', function () {
         if (res.type === 'axm:reply') {
           if (res.data.action_name === 'km:cpu:profiling:start') {
             expect(res.data.return.success).to.equal(true)
-            uuid = res.data.return.uuid
           }
         }
         if (res.type === 'profilings') {
@@ -89,7 +83,6 @@ describe('ProfilingAction', function () {
     if (semver.satisfies(process.version, '8.x')) {
       it('should get cpu profile data (force inspector on node 8)', (done) => {
         const child = launch('../fixtures/features/profilingChild')
-        let uuid
 
         child.on('message', res => {
 
@@ -99,9 +92,6 @@ describe('ProfilingAction', function () {
 
           if (res.type === 'axm:reply') {
             expect(res.data.return.success).to.equal(true)
-            if (res.data.action_name === 'km:cpu:profiling:start') {
-              uuid = res.data.return.uuid
-            }
           }
           if (res.type === 'profilings') {
             expect(typeof res.data.data).to.equal('string')
@@ -127,7 +117,6 @@ describe('ProfilingAction', function () {
     if (semver.satisfies(semver.clean(process.version), '>8.x')) {
       it('should get heap profile data', (done) => {
         const child = launch('../fixtures/features/profilingChild')
-        let uuid
 
         child.on('message', res => {
 
@@ -137,9 +126,6 @@ describe('ProfilingAction', function () {
 
           if (res.type === 'axm:reply') {
             expect(res.data.return.success).to.equal(true)
-            if (res.data.action_name === 'km:heap:sampling:start') {
-              uuid = res.data.return.uuid
-            }
           }
           if (res.type === 'profilings') {
             expect(typeof res.data.data).to.equal('string')
@@ -166,7 +152,6 @@ describe('ProfilingAction', function () {
 
       it('should get heap profile data with timeout', (done) => {
         const child = launch('../fixtures/features/profilingChild')
-        let uuid
 
         child.on('message', res => {
 
@@ -176,10 +161,6 @@ describe('ProfilingAction', function () {
 
           if (res.type === 'axm:reply') {
             expect(res.data.return.success).to.equal(true)
-
-            if (res.data.action_name === 'km:heap:sampling:start') {
-              uuid = res.data.return.uuid
-            }
           }
           if (res.type === 'profilings') {
             expect(typeof res.data.data).to.equal('string')

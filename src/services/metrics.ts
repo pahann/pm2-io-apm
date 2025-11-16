@@ -17,6 +17,7 @@ export const MetricType = {
   'gauge': 'gauge',
   'metric': 'metric' // deprecated, must use gauge
 } as const
+// eslint-disable-next-line @typescript-eslint/no-redeclare
 export type MetricType = (typeof MetricType)[keyof typeof MetricType]
 
 export const MetricMeasurements = {
@@ -33,6 +34,7 @@ export const MetricMeasurements = {
   'p99': 'p99',
   'p999': 'p999'
 } as const
+// eslint-disable-next-line @typescript-eslint/no-redeclare
 export type MetricMeasurements = (typeof MetricMeasurements)[keyof typeof MetricMeasurements]
 
 export interface InternalMetric {
@@ -123,15 +125,14 @@ export class MetricService implements Service {
     this.timer = setInterval(() => {
       if (this.transport === null) return this.logger('Abort metrics update since transport is not available')
       this.logger('refreshing metrics value')
-      for (let metric of this.metrics.values()) {
+      for (const metric of this.metrics.values()) {
         metric.value = metric.handler()
       }
       this.logger('sending update metrics value to transporter')
       // send all the metrics value to the transporter
       const metricsToSend = Array.from(this.metrics.values())
         .filter(metric => {
-          // thanks tslint but user can be dumb sometimes
-          /* tslint:disable */
+          // Defensive: users can pass invalid data at runtime
           if (metric === null || metric === undefined) return false
           if (metric.value === undefined || metric.value === null) return false
 
@@ -139,7 +140,6 @@ export class MetricService implements Service {
           const isString = typeof metric.value === 'string'
           const isBoolean = typeof metric.value === 'boolean'
           const isValidNumber = !isNaN(metric.value)
-          /* tslint:enable */
           // we send it only if it's a string or a valid number
           return isString || isBoolean || (isNumber && isValidNumber)
         })
@@ -149,8 +149,7 @@ export class MetricService implements Service {
   }
 
   registerMetric (metric: InternalMetric): void {
-    // thanks tslint but user can be dumb sometimes
-    /* tslint:disable */
+    // Defensive: users can pass invalid data at runtime
     if (typeof metric.name !== 'string') {
       console.error(`Invalid metric name declared: ${metric.name}`)
       return console.trace()
@@ -161,7 +160,6 @@ export class MetricService implements Service {
       console.error(`Invalid metric handler declared: ${metric.handler}`)
       return console.trace()
     }
-    /* tslint:enable */
     if (typeof metric.historic !== 'boolean') {
       metric.historic = true
     }
@@ -206,7 +204,6 @@ export class MetricService implements Service {
   }
 
   histogram (opts: HistogramOptions): Histogram {
-    // tslint:disable-next-line
     if (opts.measurement === undefined || opts.measurement === null) {
       opts.measurement = MetricMeasurements.mean
     }

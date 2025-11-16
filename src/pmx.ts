@@ -197,22 +197,20 @@ export default class PMX {
   metrics (metric: MetricBulk | Array<MetricBulk>): Array<Gauge | Counter | Histogram | Meter | Record<string, never>> {
 
     const res: Array<Gauge | Counter | Histogram | Meter | Record<string, never>> = []
-    // tslint:disable-next-line
     if (metric === undefined || metric === null) {
       console.error(`Received empty metric to create`)
       console.trace()
       return []
     }
 
-    let metrics: Array<MetricBulk> = !Array.isArray(metric) ? [ metric ] : metric
-    for (let metric of metrics) {
+    const metrics: Array<MetricBulk> = !Array.isArray(metric) ? [ metric ] : metric
+    for (const metric of metrics) {
       if (typeof metric.name !== 'string') {
         console.error(`Trying to create a metrics without a name`, metric)
         console.trace()
         res.push({})
         continue
       }
-      // tslint:disable-next-line
       if (metric.type === undefined) {
         metric.type = MetricType.gauge
       }
@@ -253,7 +251,6 @@ export default class PMX {
    * Create an histogram metric
    */
   histogram (config: HistogramOptions): Histogram {
-    // tslint:disable-next-line
     if (typeof config === 'string') {
       config = {
         name: config as string,
@@ -261,8 +258,7 @@ export default class PMX {
       }
     }
     if (this.metricService === null) {
-      // @ts-ignore
-      // thanks mr typescript but it's in real specific case and want to have type completion
+      // @ts-expect-error - Defensive: returns void to avoid crash when service not initialized
       return console.trace(`Tried to register a metric without initializing @pm2/io`)
     }
 
@@ -273,15 +269,13 @@ export default class PMX {
    * Create a gauge metric
    */
   metric (config: Metric): Gauge {
-    // tslint:disable-next-line
     if (typeof config === 'string') {
       config = {
         name: config as string
       }
     }
     if (this.metricService === null) {
-      // @ts-ignore
-      // thanks mr typescript but it's in real specific case and want to have type completion
+      // @ts-expect-error - Defensive: returns void to avoid crash when service not initialized
       return console.trace(`Tried to register a metric without initializing @pm2/io`)
     }
     return this.metricService.metric(config)
@@ -291,15 +285,13 @@ export default class PMX {
    * Create a gauge metric
    */
   gauge (config: Metric): Gauge {
-    // tslint:disable-next-line
     if (typeof config === 'string') {
       config = {
         name: config as string
       }
     }
     if (this.metricService === null) {
-      // @ts-ignore
-      // thanks mr typescript but it's in real specific case and want to have type completion
+      // @ts-expect-error - Defensive: returns void to avoid crash when service not initialized
       return console.trace(`Tried to register a metric without initializing @pm2/io`)
     }
     return this.metricService.metric(config)
@@ -309,15 +301,13 @@ export default class PMX {
    * Create a counter metric
    */
   counter (config: Metric): Counter {
-    // tslint:disable-next-line
     if (typeof config === 'string') {
       config = {
         name: config as string
       }
     }
     if (this.metricService === null) {
-      // @ts-ignore
-      // thanks mr typescript but it's in real specific case and want to have type completion
+      // @ts-expect-error - Defensive: returns void to avoid crash when service not initialized
       return console.trace(`Tried to register a metric without initializing @pm2/io`)
     }
 
@@ -328,15 +318,13 @@ export default class PMX {
    * Create a meter metric
    */
   meter (config: Metric): Meter {
-    // tslint:disable-next-line
     if (typeof config === 'string') {
       config = {
         name: config as string
       }
     }
     if (this.metricService === null) {
-      // @ts-ignore
-      // thanks mr typescript but it's in real specific case and want to have type completion
+      // @ts-expect-error - Defensive: returns void to avoid crash when service not initialized
       return console.trace(`Tried to register a metric without initializing @pm2/io`)
     }
 
@@ -349,7 +337,6 @@ export default class PMX {
    */
   action (name: string, opts?: Object, fn?: Function) {
     // backward compatiblity
-    // tslint:disable-next-line
     if (typeof name === 'object') {
       type ActionObject = { name: string; options?: Object; action?: Function }
       const tmp: ActionObject = name as unknown as ActionObject
@@ -358,15 +345,13 @@ export default class PMX {
       fn = tmp.action
     }
     if (this.actionService === null) {
-      // @ts-ignore
-      // thanks mr typescript but it's in real specific case and want to have type completion
+      // Defensive: returns void to avoid crash when service not initialized
       return console.trace(`Tried to register a action without initializing @pm2/io`)
     }
     return this.actionService.registerAction(name, opts, fn)
   }
 
   onExit (callback: Function) {
-    // tslint:disable-next-line
     if (typeof callback === 'function') {
       const onExit = require('signal-exit')
 

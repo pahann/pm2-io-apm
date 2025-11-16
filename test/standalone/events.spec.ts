@@ -10,7 +10,7 @@ describe('Event Spec', function () {
   this.timeout(10000)
   let httpServer
   let wsServer
-  let apm
+  let _apm
 
   before(() => {
     httpServer = new HandshakeServer()

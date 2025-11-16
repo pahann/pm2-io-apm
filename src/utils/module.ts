@@ -32,7 +32,7 @@ export default class ModuleUtils {
     if (!require.main) {
       return null
     }
-    const paths = typeof require.main.paths === 'undefined' ? fakePath : require.main.paths // tslint:disable-line
+    const paths = typeof require.main.paths === 'undefined' ? fakePath : require.main.paths
 
     const requirePaths = paths.slice()
 
@@ -44,14 +44,14 @@ export default class ModuleUtils {
    */
   private static _lookForModule (requirePaths: Array<string>, moduleName: string): string | null {
     // check for every path if we can find the module
-    for (let requirePath of requirePaths) {
+    for (const requirePath of requirePaths) {
       const completePath = path.join(requirePath, moduleName)
       debug(`Looking for module ${moduleName} in ${completePath}`)
       try {
         fs.accessSync(completePath, fs.constants.R_OK)
         debug(`Found module ${moduleName} in path ${completePath}`)
         return completePath
-      } catch (err) {
+      } catch (_err) {
         debug(`module ${moduleName} not found in path ${completePath}`)
         continue
       }

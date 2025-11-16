@@ -201,7 +201,7 @@ export default class InspectorProfiler implements ProfilerType {
     // start the idle time reporter to tell V8 when node is idle
     // See https://github.com/nodejs/node/issues/19009#issuecomment-403161559.
     type ProcessWithProfiler = NodeJS.Process & { _startProfilerIdleNotifier?: () => void }
-    if (process.hasOwnProperty('_startProfilerIdleNotifier') === true) {
+    if (Object.hasOwn(process, '_startProfilerIdleNotifier') === true) {
       (process as ProcessWithProfiler)._startProfilerIdleNotifier?.()
     }
 
@@ -239,7 +239,7 @@ export default class InspectorProfiler implements ProfilerType {
     // stop the idle time reporter to tell V8 when node is idle
     // See https://github.com/nodejs/node/issues/19009#issuecomment-403161559.
     type ProcessWithProfilerStop = NodeJS.Process & { _stopProfilerIdleNotifier?: () => void }
-    if (process.hasOwnProperty('_stopProfilerIdleNotifier') === true) {
+    if (Object.hasOwn(process, '_stopProfilerIdleNotifier') === true) {
       (process as ProcessWithProfilerStop)._stopProfilerIdleNotifier?.()
     }
 
@@ -294,13 +294,15 @@ export default class InspectorProfiler implements ProfilerType {
       const startTime = Date.now()
       this.takeSnapshot()
         .then((data: unknown) => {
-          this.transport!.send('profilings', {
-            data,
-            at: startTime,
-            initiated: typeof (opts as Record<string, unknown>).initiated === 'string' ? (opts as Record<string, unknown>).initiated : 'manual',
-            duration: Date.now() - startTime,
-            type: 'heapdump'
-          })
+          if (this.transport) {
+            this.transport.send('profilings', {
+              data,
+              at: startTime,
+              initiated: typeof (opts as Record<string, unknown>).initiated === 'string' ? (opts as Record<string, unknown>).initiated : 'manual',
+              duration: Date.now() - startTime,
+              type: 'heapdump'
+            })
+          }
         }).catch(err => {
           return cb({
             success: err.message,
@@ -310,24 +312,23 @@ export default class InspectorProfiler implements ProfilerType {
     }, 200)
   }
 
-  takeSnapshot () {
-    return new Promise(async (resolve, reject) => {
-      // not possible but thanks mr typescript
-      if (this.profiler === undefined) return reject(new Error(`Profiler not available`))
+  async takeSnapshot () {
+    // not possible but thanks mr typescript
+    if (this.profiler === undefined) {
+      throw new Error(`Profiler not available`)
+    }
 
-      const chunks: Array<string> = []
-      const chunkHandler = (raw: unknown) => {
-        const data = (raw as { params: inspector.HeapProfiler.AddHeapSnapshotChunkEventDataType }).params
-        chunks.push(data.chunk)
-      }
-      this.profiler.getSession().on('HeapProfiler.addHeapSnapshotChunk', chunkHandler)
-      // tslint:disable-next-line
-      await this.profiler.getSession().post('HeapProfiler.takeHeapSnapshot', {
-        reportProgress: false
-      })
-      // remove the listeners
-      this.profiler.getSession().removeListener('HeapProfiler.addHeapSnapshotChunk', chunkHandler)
-      return resolve(chunks.join(''))
+    const chunks: Array<string> = []
+    const chunkHandler = (raw: unknown) => {
+      const data = (raw as { params: inspector.HeapProfiler.AddHeapSnapshotChunkEventDataType }).params
+      chunks.push(data.chunk)
+    }
+    this.profiler.getSession().on('HeapProfiler.addHeapSnapshotChunk', chunkHandler)
+    await this.profiler.getSession().post('HeapProfiler.takeHeapSnapshot', {
+      reportProgress: false
     })
+    // remove the listeners
+    this.profiler.getSession().removeListener('HeapProfiler.addHeapSnapshotChunk', chunkHandler)
+    return chunks.join('')
   }
 }

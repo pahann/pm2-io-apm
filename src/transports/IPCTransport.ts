@@ -21,7 +21,7 @@ type ClusterWithWorker = typeof cluster & {
 
 export class IPCTransport extends EventEmitter2 implements Transport {
 
-  private initiated = false // tslint:disable-line
+  private initiated = false
   private logger: Debugger = Debug('axm:transport:ipc')
   private onMessage: MessageHandler | undefined
   private autoExitHandle: NodeJS.Timer | undefined

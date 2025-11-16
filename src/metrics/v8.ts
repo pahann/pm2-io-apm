@@ -6,7 +6,6 @@ import type { Debugger } from 'debug'
 import { ServiceManager } from '../serviceManager'
 import Gauge from '../utils/metrics/gauge'
 
-/* tslint:disable */
 export class V8MetricsConfig {
   new_space!: boolean
   old_space!: boolean
@@ -17,7 +16,6 @@ export class V8MetricsConfig {
   heap_used_size!: boolean
   heap_used_percent!: boolean
 }
-/* tslint:enable */
 
 const defaultOptions: V8MetricsConfig = {
   new_space: false,
@@ -105,14 +103,14 @@ export default class V8Metric implements MetricInterface {
     if (this.metricService === undefined) return this.logger('Failed to load metric service')
     this.logger('init')
 
-    if (!v8.hasOwnProperty('getHeapStatistics')) {
+    if (!Object.hasOwn(v8, 'getHeapStatistics')) {
       return this.logger(`V8.getHeapStatistics is not available, aborting`)
     }
 
     const configRecord = config as unknown as Record<string, unknown>
     const metricsRecord = this.metricsDefinitions as unknown as Record<string, Metric>
 
-    for (let metricName in this.metricsDefinitions) {
+    for (const metricName in this.metricsDefinitions) {
       if (configRecord[metricName] === false) continue
       const isEnabled = configRecord[metricName]
       if (isEnabled === false) continue
@@ -125,7 +123,7 @@ export default class V8Metric implements MetricInterface {
     this.timer = setInterval(() => {
       const stats = v8.getHeapStatistics() as unknown as Record<string, unknown>
       // update each metrics that we declared
-      for (let metricName in this.metricsDefinitions) {
+      for (const metricName in this.metricsDefinitions) {
         if (typeof stats[metricName] !== 'number') continue
         const gauge = this.metricStore.get(metricName)
         if (gauge === undefined) continue

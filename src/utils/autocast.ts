@@ -16,7 +16,7 @@ export default class Autocast {
   }
 
   traverse (o: Record<string, unknown>, func: (key: string, value: unknown, obj: Record<string, unknown>) => void): void {
-    for (let i in o) {
+    for (const i in o) {
       func.apply(this,[i,o[i], o])
       if (o[i] !== null && typeof(o[i]) === 'object') {
         // going on step down in the object tree!!

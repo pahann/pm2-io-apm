@@ -26,7 +26,7 @@ export class ActionService {
 
     const dataObj = data as { msg?: string; action_name?: string; opts?: unknown; uuid?: string }
     const actionName = dataObj.msg ? dataObj.msg : dataObj.action_name ? dataObj.action_name : (typeof data === 'string' ? data : '')
-    let action = this.actions.get(actionName)
+    const action = this.actions.get(actionName)
     if (typeof action !== 'object') {
       return this.logger(`Received action ${actionName} but failed to find the implementation`)
     }
@@ -53,25 +53,31 @@ export class ActionService {
     // create a simple object that represent a stream
     const stream = {
       send : (dt: unknown) => {
-        this.transport!.send('axm:scoped_action:stream', {
-          data: dt,
-          uuid: dataObj.uuid,
-          action_name: actionName
-        })
+        if (this.transport) {
+          this.transport.send('axm:scoped_action:stream', {
+            data: dt,
+            uuid: dataObj.uuid,
+            action_name: actionName
+          })
+        }
       },
       error : (dt: unknown) => {
-        this.transport!.send('axm:scoped_action:error', {
-          data: dt,
-          uuid: dataObj.uuid,
-          action_name: actionName
-        })
+        if (this.transport) {
+          this.transport.send('axm:scoped_action:error', {
+            data: dt,
+            uuid: dataObj.uuid,
+            action_name: actionName
+          })
+        }
       },
       end : (dt: unknown) => {
-        this.transport!.send('axm:scoped_action:end', {
-          data: dt,
-          uuid: dataObj.uuid,
-          action_name: actionName
-        })
+        if (this.transport) {
+          this.transport.send('axm:scoped_action:end', {
+            data: dt,
+            uuid: dataObj.uuid,
+            action_name: actionName
+          })
+        }
       }
     }
 
@@ -81,7 +87,6 @@ export class ActionService {
 
   init (): void {
     this.transport = ServiceManager.get('transport')
-    // tslint:disable-next-line
     if (this.transport === undefined) {
       return this.logger(`Failed to load transport service`)
     }
@@ -93,7 +98,6 @@ export class ActionService {
     if (this.timer !== undefined) {
       clearInterval(this.timer)
     }
-    // tslint:disable-next-line
     if (this.transport !== undefined) {
       this.transport.removeListener('data', this.listener.bind(this))
     }
@@ -127,11 +131,13 @@ export class ActionService {
     }
 
     const reply = (data: unknown) => {
-      this.transport!.send('axm:reply', {
-        at: new Date().getTime(),
-        action_name: actionName,
-        return: data
-      })
+      if (this.transport) {
+        this.transport.send('axm:reply', {
+          at: new Date().getTime(),
+          action_name: actionName,
+          return: data
+        })
+      }
     }
 
     const action: Action = {

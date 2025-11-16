@@ -69,11 +69,11 @@ describe('API', function () {
       child.on('message', (res: IPCMessage) => {
         if (res.type === 'axm:monitor') {
           // both metrics aren't used
-          expect(res.data!.hasOwnProperty('metric with spaces')).to.equal(false)
-          expect(res.data!.hasOwnProperty('metric wi!th special chars % ///')).to.equal(false)
-          expect(res.data!.hasOwnProperty('metricHistogram')).to.equal(true)
-          expect(res.data!.hasOwnProperty('metricInline')).to.equal(true)
-          expect(res.data!.hasOwnProperty('toto')).to.equal(true)
+          expect(Object.hasOwn(res.data!, 'metric with spaces')).to.equal(false)
+          expect(Object.hasOwn(res.data!, 'metric wi!th special chars % ///')).to.equal(false)
+          expect(Object.hasOwn(res.data!, 'metricHistogram')).to.equal(true)
+          expect(Object.hasOwn(res.data!, 'metricInline')).to.equal(true)
+          expect(Object.hasOwn(res.data!, 'toto')).to.equal(true)
           expect(res.data!.metricHistogram!.value).to.equal(10)
           expect(res.data!.metricHistogram!.type).to.equal('metric/custom')
           expect(res.data!.metricInline!.value).to.equal(11)
@@ -122,9 +122,9 @@ describe('API', function () {
 
   describe('Histogram', () => {
     it('should return an histogram', () => {
-      // @ts-ignore
+      // @ts-expect-error - Backward compatibility: old string API
       const firstWay = pmx.histogram('firstWay')
-      // @ts-ignore
+      // @ts-expect-error - Backward compatibility: old string API
       const secondWay = pmx.histogram({
         name: 'secondWay'
       })
@@ -136,7 +136,7 @@ describe('API', function () {
 
   describe('Counter', () => {
     it('should return a counter', () => {
-      // @ts-ignore old api
+      // @ts-expect-error - Backward compatibility: old string API
       const firstWay = pmx.counter('firstWay')
       const secondWay = pmx.counter({
         name: 'secondWay'
@@ -149,7 +149,7 @@ describe('API', function () {
 
   describe('Meter', () => {
     it('should return a counter', () => {
-      // @ts-ignore old api
+      // @ts-expect-error - Backward compatibility: old string API
       const firstWay = pmx.meter('firstWay')
       const secondWay = pmx.meter({
         name: 'secondWay'
@@ -162,7 +162,7 @@ describe('API', function () {
 
   describe('Metric', () => {
     it('should return an metric', () => {
-      // @ts-ignore old api
+      // @ts-expect-error - Backward compatibility: old string API
       const firstWay = pmx.metric('firstWay')
       const secondWay = pmx.metric({
         name: 'secondWay'
@@ -190,7 +190,7 @@ describe('API', function () {
     })
 
     it('should return null cause no callback provided', () => {
-      // @ts-ignore what the fuck is that test
+      // @ts-expect-error - Test edge case: onExit() without required callback
       const fn = pmx.onExit()
       expect(fn).to.equal(undefined)
     })
@@ -212,7 +212,6 @@ describe('API', function () {
   describe('Compatibility', () => {
 
     it('should return metrics object with clean keys', () => {
-      // @ts-ignore
       const metrics = pmx.metrics([
         {
           name: 'metricHistogram',
@@ -317,8 +316,8 @@ describe('API', function () {
       child.on('message', (packet: IPCMessage) => {
 
         if (packet.type === 'trace-span') {
-          expect(packet.data!.hasOwnProperty('id')).to.equal(true)
-          expect(packet.data!.hasOwnProperty('traceId')).to.equal(true)
+          expect(Object.hasOwn(packet.data!, 'id')).to.equal(true)
+          expect(Object.hasOwn(packet.data!, 'traceId')).to.equal(true)
           tracingDone = true
         }
 
@@ -357,20 +356,22 @@ describe('API', function () {
       })
 
       expect(conf.test2).to.equal('toto')
-      expect(conf.module_conf.test).to.equal('processTest')
-      expect(conf.module_conf.bool).to.equal(true)
-      expect(conf.module_conf.boolAsString).to.equal(true)
-      expect(typeof conf.module_conf.number).to.equal('number')
-      expect(conf.module_conf.number).to.equal(12)
-      expect(typeof conf.module_conf.object).to.equal('object')
-      expect(conf.module_conf.object.prop1).to.equal('value1')
+      const moduleConf = conf.module_conf as Record<string, unknown>
+      expect(moduleConf.test).to.equal('processTest')
+      expect(moduleConf.bool).to.equal(true)
+      expect(moduleConf.boolAsString).to.equal(true)
+      expect(typeof moduleConf.number).to.equal('number')
+      expect(moduleConf.number).to.equal(12)
+      expect(typeof moduleConf.object).to.equal('object')
+      expect((moduleConf.object as Record<string, unknown>).prop1).to.equal('value1')
 
       expect(conf.module_name).to.equal('mocha')
       expect(typeof conf.module_version).to.equal('string')
       expect(typeof conf.module_name).to.equal('string')
       expect(typeof conf.description).to.equal('string')
-      expect(conf.apm.type).to.equal('node')
-      expect(typeof conf.apm.version).to.equal('string')
+      const apm = conf.apm as Record<string, unknown>
+      expect(apm.type).to.equal('node')
+      expect(typeof apm.version).to.equal('string')
     })
 
     it('should return module conf with callback', () => {
@@ -383,23 +384,26 @@ describe('API', function () {
         expect(typeof conf.module_version).to.equal('string')
         expect(typeof conf.module_name).to.equal('string')
         expect(typeof conf.description).to.equal('string')
-        expect(conf.apm.type).to.equal('node')
-        expect(typeof conf.apm.version).to.equal('string')
+        const apm = conf.apm as Record<string, unknown>
+        expect(apm.type).to.equal('node')
+        expect(typeof apm.version).to.equal('string')
         expect(conf.test2).to.equal('toto')
         expect(conf.module_name).to.equal('mocha')
         expect(err).to.equal(null)
+        return conf
       })
     })
 
     it('should return minimal conf', () => {
-      // @ts-ignore
+      // @ts-expect-error - Test edge case: initModule() without config
       const conf = pmx.initModule()
       expect(conf.module_name).to.equal('mocha')
       expect(typeof conf.module_version).to.equal('string')
       expect(typeof conf.module_name).to.equal('string')
       expect(typeof conf.description).to.equal('string')
-      expect(conf.apm.type).to.equal('node')
-      expect(typeof conf.apm.version).to.equal('string')
+      const apm = conf.apm as Record<string, unknown>
+      expect(apm.type).to.equal('node')
+      expect(typeof apm.version).to.equal('string')
     })
 
     it('should receive data from init module', (done) => {
@@ -424,17 +428,13 @@ describe('API', function () {
 
       pmx.init({ metrics: { v8: true } })
       let conf = pmx.getConfig()
-      // @ts-ignore
       expect(conf.metrics.v8).to.equal(true)
-      // @ts-ignore
       expect(conf.metrics.http).to.equal(undefined)
 
       pmx.init({ metrics: { http: false } })
       conf = pmx.getConfig()
 
-      // @ts-ignore
       expect(conf.metrics.v8).to.equal(undefined)
-      // @ts-ignore
       expect(conf.metrics.http).to.equal(false)
 
       pmx.destroy()

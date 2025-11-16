@@ -1,6 +1,7 @@
 
 import io from '../../src'
 import { MetricType } from '../../src/services/metrics'
+import Histogram from '../../src/utils/metrics/histogram'
 
 const [ one, two, three ] = io.metrics(
   [
@@ -22,10 +23,10 @@ const [ one, two, three ] = io.metrics(
   ]
 )
 
-one.update(10)
+;(one as Histogram).update(10)
 
 // test inline declaration
-// @ts-ignore
+// @ts-expect-error - Backward compatibility: old string API
 const metric = io.metric('metricInline')
 metric.set(11)
 

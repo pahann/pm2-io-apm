@@ -132,7 +132,6 @@ export class TracingFeature implements Feature {
 
     this.options = enabledTracingConfig
 
-    // tslint:disable-next-line
     if (typeof config.apmOptions === 'object' && typeof config.apmOptions.appName === 'string') {
       this.options.serviceName = config.apmOptions.appName
     } else if (typeof process.env.name === 'string') {

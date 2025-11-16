@@ -83,7 +83,7 @@ export default class NetworkMetric implements MetricInterface {
 
     setTimeout(() => {
       const property = netModule.Socket.prototype.read
-      // @ts-ignore thanks mr typescript but we are monkey patching here
+      // @ts-expect-error - Monkey patching: shimmer adds __wrapped property at runtime
       const isWrapped = property && property.__wrapped === true
       if (isWrapped) {
         return this.logger(`Already patched socket read, canceling`)
@@ -120,7 +120,7 @@ export default class NetworkMetric implements MetricInterface {
 
     setTimeout(() => {
       const property = netModule.Socket.prototype.write
-      // @ts-ignore thanks mr typescript but we are monkey patching here
+      // @ts-expect-error - Monkey patching: shimmer adds __wrapped property at runtime
       const isWrapped = property && property.__wrapped === true
       if (isWrapped) {
         return this.logger(`Already patched socket write, canceling`)

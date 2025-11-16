@@ -39,11 +39,11 @@ export class Cache {
   }
 
   workerFn () {
-    let keys = Object.keys(this.ttlCache)
+    const keys = Object.keys(this.ttlCache)
     for (let i = 0; i < keys.length; i++) {
-      let key = keys[i]
+      const key = keys[i]
       if (!key) continue
-      let value = this.ttlCache[key]
+      const value = this.ttlCache[key]
       if (value !== undefined && Date.now() > value) {
         delete this.cache[key]
         delete this.ttlCache[key]
@@ -114,11 +114,11 @@ export class StackTraceParser {
   isAbsolute (path: string) {
     if (process.platform === 'win32') {
       // https://github.com/nodejs/node/blob/b3fcc245fb25539909ef1d5eaa01dbf92e168633/lib/path.js#L56
-      let splitDeviceRe = /^([a-zA-Z]:|[\\/]{2}[^\\/]+[\\/]+[^\\/]+)?([\\/])?([\s\S]*?)$/
-      let result = splitDeviceRe.exec(path)
+      const splitDeviceRe = /^([a-zA-Z]:|[\\/]{2}[^\\/]+[\\/]+[^\\/]+)?([\\/])?([\s\S]*?)$/
+      const result = splitDeviceRe.exec(path)
       if (result === null) return path.charAt(0) === '/'
-      let device = result[1] || ''
-      let isUnc = Boolean(device && device.charAt(1) !== ':')
+      const device = result[1] || ''
+      const isUnc = Boolean(device && device.charAt(1) !== ':')
       // UNC paths are always absolute
       return Boolean(result[2] || isUnc)
     } else {
@@ -165,16 +165,16 @@ export class StackTraceParser {
     if (error.stack === undefined) return null
     const frameRegex = /(\/[^\\\n]*)/g
     let tmp: RegExpExecArray | null
-    let frames: string[] = []
+    const frames: string[] = []
 
-    while ((tmp = frameRegex.exec(error.stack))) {  // tslint:disable-line
+    while ((tmp = frameRegex.exec(error.stack))) {
       if (tmp[1]) frames.push(tmp[1])
     }
     const stackFrames = frames.map((callsite) => {
       if (callsite[callsite.length - 1] === ')') {
         callsite = callsite.substr(0, callsite.length - 1)
       }
-      let location = callsite.split(':')
+      const location = callsite.split(':')
 
       return {
         file_name: location[0],

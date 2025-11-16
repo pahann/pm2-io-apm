@@ -1,4 +1,4 @@
-import { expect, assert } from 'chai'
+import { expect } from 'chai'
 import { fork } from 'child_process'
 import { resolve } from 'path'
 
@@ -19,10 +19,10 @@ describe('Network', function () {
       if (pck.type === 'axm:monitor' && pck.data['Network Out']) {
         child.kill('SIGKILL')
 
-        expect(pck.data.hasOwnProperty('Network In')).to.equal(true)
+        expect(Object.hasOwn(pck.data, 'Network In')).to.equal(true)
         expect(pck.data['Network In'].historic).to.equal(true)
 
-        expect(pck.data.hasOwnProperty('Network Out')).to.equal(true)
+        expect(Object.hasOwn(pck.data, 'Network Out')).to.equal(true)
         expect(pck.data['Network Out'].historic).to.equal(true)
 
         done()
@@ -38,10 +38,10 @@ describe('Network', function () {
       if (pck.type === 'axm:monitor' && pck.data['Network Out'] && pck.data['Network Out'].value !== '0 B/sec') {
         child.kill('SIGKILL')
 
-        expect(pck.data.hasOwnProperty('Network Out')).to.equal(true)
+        expect(Object.hasOwn(pck.data, 'Network Out')).to.equal(true)
         expect(pck.data['Network Out'].historic).to.equal(true)
 
-        expect(pck.data.hasOwnProperty('Open ports')).to.equal(false)
+        expect(Object.hasOwn(pck.data, 'Open ports')).to.equal(false)
         done()
       }
     })

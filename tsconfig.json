@@ -9,7 +9,7 @@
     "importHelpers": false,
     "inlineSourceMap": true,
     "removeComments": true,
-    "lib": ["es6"],
+    "lib": ["es2022"],
     "types": ["node", "mocha"],
     "baseUrl": ".",
 

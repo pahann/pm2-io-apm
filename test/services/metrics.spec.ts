@@ -31,7 +31,7 @@ describe('MetricsService', function () {
         assert(gauge !== undefined)
         return done()
       }
-      const gauge = service.metric({
+      const _gauge = service.metric({
         name: 'gauge',
         value: () => 10
       })
@@ -82,7 +82,7 @@ describe('MetricsService', function () {
         const gauge = metrics.find(metric => metric.name === 'gauge')
         assert(counter !== undefined && counter.value === 1)
         assert(meter !== undefined)
-        // @ts-ignore
+        // @ts-expect-error - Test assertion: explicitly checking histogram is defined before accessing value
         assert(histogram !== undefined && histogram.value > 0)
         assert(gauge !== undefined && gauge.value === 10)
         return done()

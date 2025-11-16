@@ -35,7 +35,7 @@ export default class Histogram {
       ema      : this.getEma
     }
 
-    if (this._measurement && methods.hasOwnProperty(this._measurement)) {
+    if (this._measurement && Object.hasOwn(methods, this._measurement)) {
       this._callFn = methods[this._measurement]
     } else {
       this._callFn = function () {

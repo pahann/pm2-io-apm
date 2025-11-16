@@ -17,8 +17,8 @@ describe('Tracing with IPC transport', function () {
     const spans: any[] = []
     child.on('message', pck => {
       if (pck.type !== 'trace-span') return
-      expect(pck.data.hasOwnProperty('id')).to.equal(true)
-      expect(pck.data.hasOwnProperty('traceId')).to.equal(true)
+      expect(Object.hasOwn(pck.data, 'id')).to.equal(true)
+      expect(Object.hasOwn(pck.data, 'traceId')).to.equal(true)
       spans.push(pck.data)
       if (spans.length === 4) {
         assert(spans.filter(span => span.name === 'http-get').length === 1) // client

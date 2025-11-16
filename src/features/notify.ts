@@ -96,7 +96,7 @@ export class NotifyFeature implements Feature {
         // Intentionally not logging the second error anywhere, because we would need
         // to protect against errors while doing *that* as well. (For example, the second
         // error's "toString" property may crash or not exist.)
-      } catch (e2) {
+      } catch (_e2) {
         // That didn't work. So, report a totally unknown error that resists being converted
         // into any usable form.
         // Again, we don't even attempt to look at that third error for the same reason as

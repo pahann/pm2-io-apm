@@ -1,5 +1,5 @@
-import { expect, assert } from 'chai'
-import { fork, exec } from 'child_process'
+import { expect } from 'chai'
+import { fork } from 'child_process'
 import { resolve } from 'path'
 
 const launch = (fixture) => {

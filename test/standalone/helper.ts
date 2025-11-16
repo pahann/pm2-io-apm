@@ -1,7 +1,6 @@
 
 import * as WebSocket from 'ws'
 import { EventEmitter2 } from 'eventemitter2'
-import { createServer, Server } from 'http'
 import * as express from 'express'
 
 export class WSServer extends EventEmitter2 {
@@ -9,7 +8,7 @@ export class WSServer extends EventEmitter2 {
 
   constructor (port = 3405) {
     super()
-    // @ts-ignore
+    // @ts-expect-error - External lib: ws types incomplete
     this.wss = new WebSocket.Server({ port })
     this.wss.on('connection', (ws) => {
       this.emit('connection', ws)

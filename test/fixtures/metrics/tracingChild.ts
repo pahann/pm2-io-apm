@@ -8,7 +8,7 @@ pmx.init({
   }
 })
 
-// @ts-ignore added in ci only
+// @ts-expect-error - CI only: express installed only in CI environment
 import * as express from 'express'
 import { SpanKind } from '@opencensus/core'
 import { AddressInfo } from 'net'

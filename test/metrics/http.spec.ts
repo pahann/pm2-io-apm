@@ -1,5 +1,5 @@
 
-import { expect, assert } from 'chai'
+import { expect } from 'chai'
 import { fork } from 'child_process'
 import { resolve } from 'path'
 
@@ -37,8 +37,8 @@ describe('HttpWrapper', function () {
     child.on('message', pck => {
       if (pck.type === 'trace-span' && called === false) {
         called = true
-        expect(pck.data.hasOwnProperty('id')).to.equal(true)
-        expect(pck.data.hasOwnProperty('traceId')).to.equal(true)
+        expect(Object.hasOwn(pck.data, 'id')).to.equal(true)
+        expect(Object.hasOwn(pck.data, 'traceId')).to.equal(true)
         expect(pck.data.tags['http.method']).to.equal('GET')
         expect(pck.data.tags['http.status_code']).to.equal('200')
 

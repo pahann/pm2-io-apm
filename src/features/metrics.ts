@@ -104,7 +104,7 @@ export class MetricsFeature implements Feature {
     if (typeof options !== 'object') options = {}
     this.logger('init')
 
-    for (let availableMetric of availableMetrics) {
+    for (const availableMetric of availableMetrics) {
       const metric = new availableMetric.module()
       let config: unknown
       if (typeof availableMetric.optionsPath !== 'string') {
@@ -127,7 +127,7 @@ export class MetricsFeature implements Feature {
 
   destroy () {
     this.logger('destroy')
-    for (let availableMetric of availableMetrics) {
+    for (const availableMetric of availableMetrics) {
       if (availableMetric.instance === undefined) continue
       availableMetric.instance.destroy()
     }

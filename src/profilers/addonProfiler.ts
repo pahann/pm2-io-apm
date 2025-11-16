@@ -42,10 +42,10 @@ export default class AddonProfiler implements ProfilerType {
 
   init () {
     for (const moduleName of this.modules) {
-      let path = utils.detectModule(moduleName)
+      const path = utils.detectModule(moduleName)
       // continue to search if we dont find it
       if (path === null) continue
-      let profiler = utils.loadModule(moduleName)
+      const profiler = utils.loadModule(moduleName)
       // we can fail to require it for some reasons
       if (profiler instanceof Error) continue
       this.profiler = profiler as V8Profiler
@@ -193,18 +193,22 @@ export default class AddonProfiler implements ProfilerType {
       const startTime = Date.now()
       this.takeSnapshot()
         .then((data: unknown) => {
-          this.transport!.send('profilings', {
-            data,
-            at: startTime,
-            initiated: typeof (opts as Record<string, unknown>).initiated === 'string' ? (opts as Record<string, unknown>).initiated : 'manual',
-            duration: Date.now() - startTime,
-            type: 'heapdump'
-          })
+          if (this.transport) {
+            this.transport.send('profilings', {
+              data,
+              at: startTime,
+              initiated: typeof (opts as Record<string, unknown>).initiated === 'string' ? (opts as Record<string, unknown>).initiated : 'manual',
+              duration: Date.now() - startTime,
+              type: 'heapdump'
+            })
+          }
         }).catch((err: unknown) => {
-          return cb!({
-            success: (err as Error).message,
-            err: err
-          })
+          if (cb) {
+            return cb({
+              success: (err as Error).message,
+              err: err
+            })
+          }
         })
     }, 200)
   }
