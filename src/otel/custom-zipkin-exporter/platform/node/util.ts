@@ -37,10 +37,9 @@ export function prepareSend(
     zipkinSpans: zipkinTypes.Span[],
     done: (result: ExportResult) => void
   ) {
-    // TODO: remove this log
-    console.log('#CALL SEND zipkinSpans', zipkinSpans)
     if (zipkinSpans.length === 0) {
       diag.debug('Zipkin send with empty spans');
+      // TODO: clarify need of this return
       return done({ code: ExportResultCode.SUCCESS });
     }
 
@@ -53,5 +52,7 @@ export function prepareSend(
         this.transport.send('trace-span', span)
       }
     })
+
+    return done({ code: ExportResultCode.SUCCESS });
   };
 }
