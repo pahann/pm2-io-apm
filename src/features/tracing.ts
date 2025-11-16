@@ -45,7 +45,7 @@ export interface TracingConfig {
   enabled: boolean
   /**
    * If you want to report a specific service name
-   * the default is the same as in apmOptions
+   * the default is read from package.json or process.env.name
    */
   serviceName?: string
   /**
@@ -132,9 +132,7 @@ export class TracingFeature implements Feature {
 
     this.options = enabledTracingConfig
 
-    if (typeof config.apmOptions === 'object' && typeof config.apmOptions.appName === 'string') {
-      this.options.serviceName = config.apmOptions.appName
-    } else if (typeof process.env.name === 'string') {
+    if (typeof process.env.name === 'string') {
       this.options.serviceName = process.env.name
     }
 

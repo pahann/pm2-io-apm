@@ -1,6 +1,6 @@
 {
   "name": "@pm2/io",
-  "version": "7.0.0-dev4",
+  "version": "7.0.0-dev5",
   "description": "PM2.io NodeJS APM",
   "main": "build/main/index.js",
   "typings": "build/main/index.d.ts",
@@ -57,9 +57,7 @@
     "nyc": "^15.1.0",
     "source-map-support": "~0.5.9",
     "ts-node": "^10.9.2",
-    "typescript": "~5.8.3",
-    "vue": "^2.6.11",
-    "vue-server-renderer": "^2.6.11"
+    "typescript": "~5.8.3"
   },
   "keywords": [],
   "nyc": {

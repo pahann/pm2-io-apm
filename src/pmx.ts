@@ -45,15 +45,6 @@ export class IOConfig {
    * Configure the transaction tracing options
    */
   tracing?: TracingConfig | boolean = false
-  /**
-   * If you want to connect to PM2 Enterprise without using PM2, you should enable
-   * the standalone mode
-   */
-  standalone?: boolean = false
-  /**
-   * Define custom options for the standalone mode
-   */
-  apmOptions?: TransportConfig
 }
 
 export const defaultConfig: IOConfig = {
@@ -66,8 +57,6 @@ export const defaultConfig: IOConfig = {
     runtime: true,
     http: true
   },
-  standalone: false,
-  apmOptions: undefined,
   tracing: {
     enabled: false,
     outbound: false
@@ -102,18 +91,8 @@ export default class PMX {
     if (config === undefined) {
       config = defaultConfig
     }
-    if (!config.standalone) {
-      const autoStandalone = process.env.PM2_SECRET_KEY && process.env.PM2_PUBLIC_KEY && process.env.PM2_APP_NAME
-      config.standalone = !!autoStandalone
-      config.apmOptions = autoStandalone ? {
-        secretKey: process.env.PM2_SECRET_KEY,
-        publicKey: process.env.PM2_PUBLIC_KEY,
-        appName: process.env.PM2_APP_NAME
-      } as TransportConfig : undefined
-    }
-
     // Register the transport before any other service
-    this.transport = createTransport(config.standalone === true ? 'websocket' : 'ipc', config.apmOptions as TransportConfig)
+    this.transport = createTransport('ipc', {} as TransportConfig)
     ServiceManager.set('transport', this.transport)
 
     if (canUseInspector()) {
