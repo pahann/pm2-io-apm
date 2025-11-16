@@ -24,6 +24,11 @@ $MOCHA ./test/metrics/v8.spec.ts
 $MOCHA ./test/services/actions.spec.ts
 $MOCHA ./test/services/metrics.spec.ts
 
+#### New critical tests
+$MOCHA ./test/utils/BinaryHeap.spec.ts
+$MOCHA ./test/issues/race-conditions.spec.ts
+$MOCHA ./test/issues/memory-leaks.spec.ts
+
 #### Tracing tests
 
 # Enable tests
